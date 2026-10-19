@@ -70,7 +70,7 @@ Delivered in increments, each a PR with CI passing:
 4. ✅ Dashboard and calendar (live updates via Supabase Realtime)
 5. ✅ Invoices and quotes: VAT, deposits, part payments, PDF and a WhatsApp share link
 6. ✅ M-Pesa: STK push from invoices, booking deposits and share links (mock mode locally, Daraja sandbox in the cloud)
-7. Reports
+7. ✅ Reports: revenue trend, busiest hours, staff utilisation, receivables ageing and repeat customers
 8. Polish and deploy
 
 > This repository is public. Never commit secrets: use `.env.local`
