@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+/*
+ * Brand tokens. Components use semantic names (bg, surface, ink, brand...)
+ * so light and dark themes are just different values for the same variables.
+ */
+:root {
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+  --surface-2: #efece4;
+  --ink: #15171f;
+  --muted: #5b5f6b;
+  --line: #e2ded3;
+  --brand: #ff5a36; /* "sunrise" coral: the "you're next" call to action */
+  --brand-ink: #ffffff;
+  --brand-soft: #ffe6df;
+  --mpesa: #12a150;
+  --danger: #c62828;
+  --focus: #2952ff;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1015;
+    --surface: #171a22;
+    --surface-2: #20242e;
+    --ink: #f3f1ec;
+    --muted: #a3a8b4;
+    --line: #2b303b;
+    --brand: #ff7152;
+    --brand-ink: #15171f;
+    --brand-soft: #3a1f19;
+    --mpesa: #3ccf7c;
+    --danger: #ff6b6b;
+    --focus: #8ea2ff;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e1015;
+  --surface: #171a22;
+  --surface-2: #20242e;
+  --ink: #f3f1ec;
+  --muted: #a3a8b4;
+  --line: #2b303b;
+  --brand: #ff7152;
+  --brand-ink: #15171f;
+  --brand-soft: #3a1f19;
+  --mpesa: #3ccf7c;
+  --danger: #ff6b6b;
+  --focus: #8ea2ff;
+  color-scheme: dark;
+}
+
+/* Expose the tokens as Tailwind utilities: bg-surface, text-muted, border-line... */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-mpesa: var(--mpesa);
+  --color-danger: var(--danger);
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--ink);
+  }
+  body {
+    @apply min-h-dvh font-sans antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Custom utilities (Tailwind v4 `@utility`): usable in markup and with variants like sm:btn. */
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-brand text-brand-ink hover:brightness-95;
+}
+@utility btn-secondary {
+  @apply btn border border-line bg-surface text-ink hover:bg-surface-2;
+}
+@utility btn-ghost {
+  @apply btn text-muted hover:bg-surface-2 hover:text-ink;
+}
+@utility card {
+  @apply rounded-2xl border border-line bg-surface p-5 sm:p-6;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-medium;
+}
+@utility input {
+  @apply min-h-11 w-full rounded-xl border border-line bg-surface px-3.5 text-base text-ink placeholder:text-muted/70 focus:border-ink;
+}
+@utility field-error {
+  @apply mt-1.5 text-sm text-danger;
+}
+@utility eyebrow {
+  @apply text-xs font-semibold tracking-[0.14em] text-muted uppercase;
+}

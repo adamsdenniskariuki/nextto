@@ -28,11 +28,33 @@ port = 54323
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**"]
 jwt_expiry = 3600
 enable_signup = true
+
+[auth.rate_limit]
+# Generous locally so e2e tests can send many magic links.
+email_sent = 100
 
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
+max_frequency = "1s"
+
+# Magic links use the token_hash flow (verified by /auth/confirm) instead of
+# PKCE, so a link works in any browser: essential for staff invitations, which
+# the owner requests but the invitee opens. Mirror these in the hosted project
+# (see docs/SETUP.md).
+[auth.email.template.magic_link]
+subject = "Your Nextto sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Welcome to Nextto: confirm your email"
+content_path = "./supabase/templates/magic_link.html"
+
+# Local email viewer (Mailpit) at http://127.0.0.1:54324
+[inbucket]
+enabled = true
+port = 54324

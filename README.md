@@ -19,12 +19,12 @@ Auth, RLS, Realtime, pg_cron), and hosted on Vercel.
 
 ## Docs
 
-| Doc | What's in it |
-| --- | --- |
-| [docs/SETUP.md](docs/SETUP.md) | **Setup and deployment**: local development, the Supabase project and keys, migrations, Vercel and the env var table, the Daraja sandbox and callback URL, DNS for nextto.app and the nextto.madebyfavor.com redirect. |
-| [LEARNING.md](LEARNING.md) | Each feature mapped to the Next.js, TypeScript, Postgres and Supabase concepts it demonstrates. |
-| [docs/sql-notes.md](docs/sql-notes.md) | Indexes, with `EXPLAIN` plans showing they're used. |
-| [.env.example](.env.example) | Every environment variable, with placeholders only. |
+| Doc                                    | What's in it                                                                                                                                                                                                           |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [docs/SETUP.md](docs/SETUP.md)         | **Setup and deployment**: local development, the Supabase project and keys, migrations, Vercel and the env var table, the Daraja sandbox and callback URL, DNS for nextto.app and the nextto.madebyfavor.com redirect. |
+| [LEARNING.md](LEARNING.md)             | Each feature mapped to the Next.js, TypeScript, Postgres and Supabase concepts it demonstrates.                                                                                                                        |
+| [docs/sql-notes.md](docs/sql-notes.md) | Indexes, with `EXPLAIN` plans showing they're used.                                                                                                                                                                    |
+| [.env.example](.env.example)           | Every environment variable, with placeholders only.                                                                                                                                                                    |
 
 ## Quick start (local)
 
@@ -35,6 +35,10 @@ npm install
 npm run db:start   # local Supabase: applies supabase/migrations + seed.sql
 npm run db:test    # pgTAP schema, RLS, booking, invoice, M-Pesa and report tests
 npm run db:lint
+cp .env.example .env.local   # fill in from `npx supabase status`
+npm run dev        # http://localhost:3000 (magic-link emails: http://127.0.0.1:54324)
+npm test           # Vitest
+npm run test:e2e   # Playwright
 ```
 
 See [docs/SETUP.md](docs/SETUP.md#1-local-development) for the full steps,
@@ -43,10 +47,16 @@ including the seeded demo logins.
 ## Repository layout
 
 ```
+src/
+  app/          Next.js App Router pages, server actions, route handlers
+  lib/          Supabase clients, Zod schemas, money/phone helpers (+ unit tests)
+  proxy.ts      session refresh (Next 16's renamed middleware)
+e2e/            Playwright tests
 supabase/
   migrations/   versioned schema, RLS, SQL functions, pg_cron jobs
   tests/        pgTAP tests (run with `supabase test db`)
   seed.sql      one demo business per business-type preset
+  templates/    auth email templates (token_hash magic links)
 docs/           setup and SQL notes
 ```
 
@@ -55,7 +65,7 @@ docs/           setup and SQL notes
 Delivered in increments, each a PR with CI passing:
 
 1. ✅ Schema, RLS and SQL functions with tests
-2. Auth, onboarding and presets
+2. ✅ Auth, onboarding and presets
 3. Public booking
 4. Dashboard and calendar
 5. Invoices and PDF
