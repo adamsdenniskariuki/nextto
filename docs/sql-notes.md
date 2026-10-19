@@ -154,12 +154,14 @@ an index-only scan.
 
 ## 6. Other indexes worth knowing
 
-| Index                             | Kind                | Why                                                                           |
-| --------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
-| `invitations_open_email_idx`      | partial **unique**  | Only one _open_ invitation per email per business; accepted ones don't count. |
-| `services_business_idx`           | partial composite   | Public booking page lists only active services, in order.                     |
-| `bookings_series_idx`             | partial             | Most bookings aren't recurring; the index skips the NULLs.                    |
-| `payments_business_paid_idx`      | partial composite   | Revenue reports read only succeeded payments by date.                         |
-| `mpesa_callbacks_unprocessed_idx` | partial             | Finds callbacks that arrived before their payment row.                        |
-| `time_off_staff_during_idx`       | GiST composite      | Slot generation subtracts time off by staff and range.                        |
-| `business_daily_stats_pk`         | unique on a matview | Required for `refresh materialized view concurrently`.                        |
+| Index                                                           | Kind                | Why                                                                                  |
+| --------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------ |
+| `invitations_open_email_idx`                                    | partial **unique**  | Only one _open_ invitation per email per business; accepted ones don't count.        |
+| `services_business_idx`                                         | partial composite   | Public booking page lists only active services, in order.                            |
+| `bookings_series_idx`                                           | partial             | Most bookings aren't recurring; the index skips the NULLs.                           |
+| `payments_business_paid_idx`                                    | partial composite   | Revenue reports read only succeeded payments by date.                                |
+| `mpesa_callbacks_unprocessed_idx`                               | partial             | Finds callbacks that arrived before their payment row.                               |
+| `payments_one_pending_mpesa_per_invoice` / `_per_booking`       | partial **unique**  | One waiting M-Pesa prompt per invoice or booking; a double-click gets `23505`.       |
+| `payments_invoice_created_idx` / `payments_booking_created_idx` | composite           | `latest_mpesa_attempt()` and the five-per-hour limit read the newest rows by target. |
+| `time_off_staff_during_idx`                                     | GiST composite      | Slot generation subtracts time off by staff and range.                               |
+| `business_daily_stats_pk`                                       | unique on a matview | Required for `refresh materialized view concurrently`.                               |

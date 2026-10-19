@@ -152,24 +152,43 @@ supabase db push                                     # apply supabase/migrations
 "Public" variables (`NEXT_PUBLIC_*`) are compiled into the browser bundle.
 Everything else is a server-side secret. `.env.example` mirrors this table.
 
-| Name                            | Where to get it                                                            | Public / secret                  | Used by                                                 |
-| ------------------------------- | -------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------- |
-| `NEXT_PUBLIC_SITE_URL`          | `https://nextto.app` in production, `http://localhost:3000` locally        | Public                           | Absolute links (share links, auth redirects)            |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Project Settings → API → Project URL (local: `supabase status`) | Public                           | Browser and server Supabase clients                     |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API Keys → anon / publishable key (local: `supabase status`)    | Public                           | Browser and server Supabase clients (RLS applies)       |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase → API Keys → service_role / secret key (local: `supabase status`) | **Secret**                       | Server-only admin client (M-Pesa callback, invitations) |
-| `SUPABASE_PROJECT_REF`          | The subdomain of your Supabase URL                                         | Secret (CI only)                 | `supabase link` in GitHub Actions                       |
-| `SUPABASE_ACCESS_TOKEN`         | Supabase → Account → Access Tokens                                         | **Secret** (CI only)             | `supabase link` / `db push` in GitHub Actions           |
-| `SUPABASE_DB_PASSWORD`          | Chosen when creating the project                                           | **Secret** (CI only)             | `supabase db push` in GitHub Actions                    |
-| `MPESA_ENV`                     | `sandbox` (switch to `production` at go-live)                              | Secret                           | Chooses the Daraja base URL                             |
-| `MPESA_CONSUMER_KEY`            | Daraja portal → My Apps → your app                                         | **Secret**                       | OAuth token for Daraja                                  |
-| `MPESA_CONSUMER_SECRET`         | Daraja portal → My Apps → your app                                         | **Secret**                       | OAuth token for Daraja                                  |
-| `MPESA_SHORTCODE`               | Sandbox: `174379` (Daraja test credentials)                                | Secret                           | STK push `BusinessShortCode`                            |
-| `MPESA_PASSKEY`                 | Daraja → APIs → M-Pesa Express → Simulate (test credentials)               | **Secret**                       | STK password = base64(shortcode + passkey + timestamp)  |
-| `MPESA_CALLBACK_SECRET`         | Generate: `openssl rand -hex 32`                                           | **Secret**                       | Unguessable path segment that authenticates callbacks   |
-| `MPESA_CALLBACK_URL`            | `${NEXT_PUBLIC_SITE_URL}/api/mpesa/callback/${MPESA_CALLBACK_SECRET}`      | **Secret** (contains the secret) | Sent to Daraja as `CallBackURL`                         |
+| Name                            | Where to get it                                                                            | Public / secret                  | Used by                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`          | `https://nextto.app` in production, `http://localhost:3000` locally                        | Public                           | Absolute links (share links, auth redirects)            |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Project Settings → API → Project URL (local: `supabase status`)                 | Public                           | Browser and server Supabase clients                     |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API Keys → anon / publishable key (local: `supabase status`)                    | Public                           | Browser and server Supabase clients (RLS applies)       |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase → API Keys → service_role / secret key (local: `supabase status`)                 | **Secret**                       | Server-only admin client (M-Pesa callback, invitations) |
+| `SUPABASE_PROJECT_REF`          | The subdomain of your Supabase URL                                                         | Secret (CI only)                 | `supabase link` in GitHub Actions                       |
+| `SUPABASE_ACCESS_TOKEN`         | Supabase → Account → Access Tokens                                                         | **Secret** (CI only)             | `supabase link` / `db push` in GitHub Actions           |
+| `SUPABASE_DB_PASSWORD`          | Chosen when creating the project                                                           | **Secret** (CI only)             | `supabase db push` in GitHub Actions                    |
+| `MPESA_ENV`                     | `mock` locally and in CI, `sandbox` on Vercel, `production` at go-live; unset hides M-Pesa | Secret                           | Chooses fake prompts or the Daraja base URL             |
+| `MPESA_CONSUMER_KEY`            | Daraja portal → My Apps → your app                                                         | **Secret**                       | OAuth token for Daraja                                  |
+| `MPESA_CONSUMER_SECRET`         | Daraja portal → My Apps → your app                                                         | **Secret**                       | OAuth token for Daraja                                  |
+| `MPESA_SHORTCODE`               | Sandbox: `174379` (Daraja test credentials)                                                | Secret                           | STK push `BusinessShortCode`                            |
+| `MPESA_PASSKEY`                 | Daraja → APIs → M-Pesa Express → Simulate (test credentials)                               | **Secret**                       | STK password = base64(shortcode + passkey + timestamp)  |
+| `MPESA_CALLBACK_SECRET`         | Generate: `openssl rand -hex 32`                                                           | **Secret**                       | Unguessable path segment that authenticates callbacks   |
+| `MPESA_CALLBACK_URL`            | `${NEXT_PUBLIC_SITE_URL}/api/mpesa/callback/${MPESA_CALLBACK_SECRET}`                      | **Secret** (contains the secret) | Sent to Daraja as `CallBackURL` (checked at startup)    |
+| `MPESA_CALLBACK_ALLOWED_IPS`    | Optional: Safaricom's published callback IPs, comma-separated                              | Secret                           | Extra IP allow-list on the callback route (empty = off) |
 
 ## 6. M-Pesa Daraja sandbox
+
+### Mock mode (no Safaricom account)
+
+Set `MPESA_ENV=mock`, `MPESA_CALLBACK_SECRET` (any 8+ characters) and
+`SUPABASE_SERVICE_ROLE_KEY`. Pressing **Send M-Pesa request** then creates a
+real pending payment, and about 1.5 seconds later the server POSTs a
+Safaricom-shaped callback to its own `/api/mpesa/callback/<secret>` route.
+The whole path (route, Zod, SQL idempotency, booking confirmation) runs; only
+Safaricom is skipped. CI and the Playwright tests use this mode. The outcome
+depends on the customer's phone:
+
+| Phone ends in | Result                    |
+| ------------- | ------------------------- |
+| `1032`        | Customer cancels          |
+| `0001`        | Fails: insufficient funds |
+| anything else | Paid, with a fake receipt |
+
+### Sandbox (real Daraja)
 
 1. Create an account at https://developer.safaricom.co.ke and log in.
 2. **My Apps → Create new app**. Tick **Lipa Na M-Pesa Sandbox (M-Pesa
@@ -184,14 +203,18 @@ Everything else is a server-side secret. `.env.example` mirrors this table.
    - Production / preview: `https://nextto.app/api/mpesa/callback/<MPESA_CALLBACK_SECRET>`
    - Local: `https://<your-tunnel>/api/mpesa/callback/<MPESA_CALLBACK_SECRET>`
 5. How callbacks are trusted (defence in depth):
-   - The secret path segment must match `MPESA_CALLBACK_SECRET`.
+   - The secret path segment must match `MPESA_CALLBACK_SECRET` (compared in
+     constant time). Anything else gets a 404.
+   - Optionally, the source IP must be in `MPESA_CALLBACK_ALLOWED_IPS`.
    - The body is validated with Zod.
    - The database function `public.record_mpesa_callback` (service role only)
      stores every callback once, keyed by a unique `CheckoutRequestID`. It is
      idempotent, so a replayed or duplicated callback cannot double-credit a
      payment.
-   - For production, also confirm the result with the STK Query API before
-     marking high-value payments as paid.
+   - Prompts that never get a callback are expired by `pg_cron` after 15
+     minutes, so the customer can try again.
+   - Before go-live, consider also confirming high-value results with the STK
+     Query API (not built in v1).
 6. Sandbox test phone: use the number shown on the Daraja simulator page
    (for example `254708374149`). Sandbox prompts are simulated, so no real money
    moves.

@@ -33,6 +33,15 @@ async function expectNoSideScroll(page: Page) {
   expect(overflowing, `elements wider than ${width}px`).toEqual([]);
 }
 
+/** The manual (cash/card/bank) form sits in a <details> under the M-Pesa form. */
+async function manualPayments(page: Page) {
+  const details = page.locator("details", { hasText: "Record a cash, card or bank payment" });
+  if (!(await details.evaluate((d: HTMLDetailsElement) => d.open))) {
+    await details.locator("summary").click();
+  }
+  return details;
+}
+
 async function fillFirstItem(page: Page, description: string, qty: string, price: string) {
   await page.getByLabel("Item 1 description").fill(description);
   await page.getByLabel("Qty").first().fill(qty);
@@ -65,13 +74,15 @@ test("invoice: draft → issue → part payment → paid → shared link and PDF
 
   // A partial cash payment, then the rest (the form suggests the balance).
   await expectNoSideScroll(page);
-  await page.getByLabel("Amount (KES)").fill("400");
-  await page.getByRole("button", { name: "Record payment" }).click();
+  let manual = await manualPayments(page);
+  await manual.getByLabel("Amount (KES)").fill("400");
+  await manual.getByRole("button", { name: "Record payment" }).click();
   await expect(page.getByTestId("doc-balance")).toHaveText(/600/);
   await expect(page.getByText(/Invoice · Part paid/)).toBeVisible();
 
-  await expect(page.getByLabel("Amount (KES)")).toHaveValue("600");
-  await page.getByRole("button", { name: "Record payment" }).click();
+  manual = await manualPayments(page);
+  await expect(manual.getByLabel("Amount (KES)")).toHaveValue("600");
+  await manual.getByRole("button", { name: "Record payment" }).click();
   await expect(page.getByText(/Invoice · Paid/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Record payment" })).toBeHidden();
 

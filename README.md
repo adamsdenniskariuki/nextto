@@ -69,7 +69,7 @@ Delivered in increments, each a PR with CI passing:
 3. ✅ Public booking (try http://localhost:3000/b/demo-salon after `npm run db:start`)
 4. ✅ Dashboard and calendar (live updates via Supabase Realtime)
 5. ✅ Invoices and quotes: VAT, deposits, part payments, PDF and a WhatsApp share link
-6. M-Pesa sandbox
+6. ✅ M-Pesa: STK push from invoices, booking deposits and share links (mock mode locally, Daraja sandbox in the cloud)
 7. Reports
 8. Polish and deploy
 

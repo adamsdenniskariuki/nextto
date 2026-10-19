@@ -15,6 +15,8 @@
   --brand-ink: #ffffff;
   --brand-soft: #ffe6df;
   --mpesa: #12a150;
+  --mpesa-strong: #0b7a3b; /* white text on it passes WCAG AA */
+  --mpesa-ink: #ffffff;
   --danger: #c62828;
   --focus: #2952ff;
   color-scheme: light;
@@ -32,6 +34,8 @@
     --brand-ink: #15171f;
     --brand-soft: #3a1f19;
     --mpesa: #3ccf7c;
+    --mpesa-strong: #3ccf7c;
+    --mpesa-ink: #0e1015;
     --danger: #ff6b6b;
     --focus: #8ea2ff;
     color-scheme: dark;
@@ -49,6 +53,8 @@
   --brand-ink: #15171f;
   --brand-soft: #3a1f19;
   --mpesa: #3ccf7c;
+  --mpesa-strong: #3ccf7c;
+  --mpesa-ink: #0e1015;
   --danger: #ff6b6b;
   --focus: #8ea2ff;
   color-scheme: dark;
@@ -66,6 +72,8 @@
   --color-brand-ink: var(--brand-ink);
   --color-brand-soft: var(--brand-soft);
   --color-mpesa: var(--mpesa);
+  --color-mpesa-strong: var(--mpesa-strong);
+  --color-mpesa-ink: var(--mpesa-ink);
   --color-danger: var(--danger);
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -99,6 +107,10 @@
 }
 @utility btn-primary {
   @apply btn bg-brand text-brand-ink hover:brightness-95;
+}
+/* The M-Pesa action: Safaricom green, so customers recognise it instantly. */
+@utility btn-mpesa {
+  @apply btn bg-mpesa-strong text-mpesa-ink hover:brightness-110;
 }
 @utility btn-secondary {
   @apply btn border border-line bg-surface text-ink hover:bg-surface-2;
