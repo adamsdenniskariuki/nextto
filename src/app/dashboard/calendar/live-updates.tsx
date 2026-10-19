@@ -59,13 +59,20 @@ export function LiveUpdates({ businessId }: { businessId: string }) {
             }, 250);
           },
         )
-        .on("system", {}, (payload: { status?: string }) => {
-          // Server-side subscription errors arrive as "system" messages.
+        .on("system", {}, (payload: { status?: string; extension?: string }) => {
+          // SUBSCRIBED (below) only means the channel was joined. Realtime then
+          // sets up the Postgres listener and confirms with a "system" message;
+          // changes made before that are not delivered. So "Live" waits for
+          // this, then refreshes once to pick up anything that changed between
+          // the server render and now.
           if (payload.status === "error") setStatus("offline");
+          else if (payload.status === "ok" && payload.extension === "postgres_changes") {
+            setStatus("live");
+            router.refresh();
+          }
         })
         .subscribe((state) => {
-          if (state === "SUBSCRIBED") setStatus("live");
-          else if (state === "CHANNEL_ERROR" || state === "TIMED_OUT" || state === "CLOSED")
+          if (state === "CHANNEL_ERROR" || state === "TIMED_OUT" || state === "CLOSED")
             setStatus("offline");
         });
     })();

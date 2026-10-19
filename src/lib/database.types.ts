@@ -1295,6 +1295,13 @@ export type Database = {
         Args: { p_amount_cents?: number; p_booking_id?: string; p_invoice_id?: string };
         Returns: Json;
       };
+      public_booking_pages: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          last_modified: string;
+          slug: string;
+        }[];
+      };
       record_mpesa_callback: { Args: { p_payload: Json }; Returns: Json };
       report_busiest_hours: {
         Args: { p_business_id: string; p_from: string; p_to: string };

@@ -13,6 +13,7 @@ secrets live in Vercel/Supabase/GitHub environment settings or in your untracked
 - [6. M-Pesa Daraja sandbox](#6-m-pesa-daraja-sandbox)
 - [7. Domains and DNS](#7-domains-and-dns)
 - [8. GitHub Actions secrets](#8-github-actions-secrets)
+- [9. Go-live checklist](#9-go-live-checklist)
 
 ---
 
@@ -254,7 +255,52 @@ redirects to the primary.
 
 ## 8. GitHub Actions secrets
 
-CI runs migrations and pgTAP tests against an ephemeral local Supabase stack,
-so it needs **no secrets**. To deploy migrations from CI later, add these
-under GitHub → Settings → Secrets and variables → Actions:
-`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`.
+The **CI** workflow runs migrations and pgTAP tests against an ephemeral local
+Supabase stack, so it needs **no secrets**.
+
+The **Deploy database** workflow (`.github/workflows/deploy-db.yml`) runs
+`supabase db push` against the cloud project. It runs after any merge to `main`
+that changes `supabase/migrations/`, or by hand from **Actions → Deploy
+database → Run workflow**. It skips cleanly until you add these under GitHub →
+Settings → Secrets and variables → Actions:
+
+| Secret                  | Value                                         |
+| ----------------------- | --------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN` | Supabase → Account → Access Tokens → Generate |
+| `SUPABASE_DB_PASSWORD`  | The database password from section 2          |
+| `SUPABASE_PROJECT_REF`  | The subdomain of your Supabase URL            |
+
+It never runs `seed.sql`. Prefer running the first push by hand
+([section 3](#3-link-the-supabase-cli-and-run-migrations)) so you can watch it.
+
+## 9. Go-live checklist
+
+Work through this once, in order. Each line points at the section with the
+details.
+
+- [ ] Supabase project created; URL, anon key, service role key and project ref
+      saved in your password manager (§2).
+- [ ] `supabase db push` applied every migration (§3). In the SQL editor,
+      `select jobname, schedule from cron.job;` lists the stats refresh and the
+      payment expiry jobs.
+- [ ] Supabase **Authentication → URL Configuration**: Site URL
+      `https://nextto.app` and the redirect URLs (§2.4).
+- [ ] Email templates set to `supabase/templates/magic_link.html` (§2.6), and
+      custom SMTP configured before inviting real customers.
+- [ ] Vercel project imported, and every variable from §5 set for Production
+      and Preview. `NEXT_PUBLIC_SITE_URL=https://nextto.app` in Production.
+- [ ] Daraja sandbox app created; `MPESA_ENV=sandbox` plus key, secret,
+      shortcode, passkey and a fresh `MPESA_CALLBACK_SECRET` (§6).
+      `MPESA_CALLBACK_URL` must start with `NEXT_PUBLIC_SITE_URL`.
+- [ ] DNS for `nextto.app` resolves and has a certificate;
+      `nextto.madebyfavor.com` and `www.nextto.app` redirect to it (§7).
+      `next.config.ts` also redirects the madebyfavor host, as a fallback.
+- [ ] Smoke test on production: sign up as an owner, open `/b/<slug>`, book a
+      slot, create an invoice from the booking, and send an M-Pesa sandbox
+      prompt to the Daraja test number. The invoice should show "Paid" within
+      seconds.
+- [ ] `https://nextto.app/robots.txt` and `https://nextto.app/sitemap.xml` load.
+      Submit the sitemap in Google Search Console (verify the domain with a DNS
+      TXT record). Preview deployments send `Disallow: /` automatically.
+- [ ] Optional: add the three GitHub secrets from §8 so future migrations deploy
+      on merge.

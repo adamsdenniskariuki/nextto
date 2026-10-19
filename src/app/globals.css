@@ -11,10 +11,13 @@
   --ink: #15171f;
   --muted: #5b5f6b;
   --line: #e2ded3;
-  --brand: #ff5a36; /* "sunrise" coral: the "you're next" call to action */
+  /* "Sunrise" coral: the "you're next" call to action. Deep enough in light mode
+     for 4.5:1 contrast both as text on bg/surface-2 and under white button text
+     (checked by e2e/a11y.spec.ts); dark mode can use the brighter coral. */
+  --brand: #c2381a;
   --brand-ink: #ffffff;
   --brand-soft: #ffe6df;
-  --mpesa: #12a150;
+  --mpesa: #0b7a3b; /* used as text too, so AA on surface-2 */
   --mpesa-strong: #0b7a3b; /* white text on it passes WCAG AA */
   --mpesa-ink: #ffffff;
   --danger: #c62828;
