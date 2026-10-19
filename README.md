@@ -19,12 +19,12 @@ Auth, RLS, Realtime, pg_cron), and hosted on Vercel.
 
 ## Docs
 
-| Doc                                    | What's in it                                                                                                                                                                                                           |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [docs/SETUP.md](docs/SETUP.md)         | **Setup and deployment**: local development, the Supabase project and keys, migrations, Vercel and the env var table, the Daraja sandbox and callback URL, DNS for nextto.app and the nextto.madebyfavor.com redirect. |
-| [LEARNING.md](LEARNING.md)             | Each feature mapped to the Next.js, TypeScript, Postgres and Supabase concepts it demonstrates.                                                                                                                        |
-| [docs/sql-notes.md](docs/sql-notes.md) | Indexes, with `EXPLAIN` plans showing they're used.                                                                                                                                                                    |
-| [.env.example](.env.example)           | Every environment variable, with placeholders only.                                                                                                                                                                    |
+| Doc                                    | What's in it                                                                                                                                                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [docs/SETUP.md](docs/SETUP.md)         | **Setup and deployment**: local development, the Supabase project and keys, migrations, Vercel and the env var table, the Daraja sandbox and callback URL, DNS for nextto.app and the nextto.madebyfavor.com redirect, and the go-live checklist. |
+| [LEARNING.md](LEARNING.md)             | Each feature mapped to the Next.js, TypeScript, Postgres and Supabase concepts it demonstrates.                                                                                                                                                   |
+| [docs/sql-notes.md](docs/sql-notes.md) | Indexes, with `EXPLAIN` plans showing they're used.                                                                                                                                                                                               |
+| [.env.example](.env.example)           | Every environment variable, with placeholders only.                                                                                                                                                                                               |
 
 ## Quick start (local)
 
@@ -71,7 +71,7 @@ Delivered in increments, each a PR with CI passing:
 5. ✅ Invoices and quotes: VAT, deposits, part payments, PDF and a WhatsApp share link
 6. ✅ M-Pesa: STK push from invoices, booking deposits and share links (mock mode locally, Daraja sandbox in the cloud)
 7. ✅ Reports: revenue trend, busiest hours, staff utilisation, receivables ageing and repeat customers
-8. Polish and deploy
+8. ✅ Polish and deploy: accessibility sweep, error and 404 pages, icons and social card, robots and sitemap, security headers, and a migration deploy workflow (go-live checklist in [docs/SETUP.md](docs/SETUP.md#9-go-live-checklist))
 
 > This repository is public. Never commit secrets: use `.env.local`
 > (gitignored) locally, and Vercel or Supabase environment variables in the

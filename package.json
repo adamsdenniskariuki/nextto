@@ -25,6 +25,7 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.1-d1531a9.0.sha-d1531a9",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
