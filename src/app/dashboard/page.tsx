@@ -63,7 +63,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{business.name}</h1>
         <p className="mt-2 text-muted">
           Your booking page:{" "}
-          <span className="font-mono text-sm break-all text-ink">{bookingUrl}</span>
+          <a
+            href={`/b/${business.slug}`}
+            className="font-mono text-sm break-all text-ink underline-offset-4 hover:underline"
+          >
+            {bookingUrl}
+          </a>
         </p>
       </section>
 

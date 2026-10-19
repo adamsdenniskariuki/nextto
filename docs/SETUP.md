@@ -57,6 +57,10 @@ Sign in at http://localhost:3000/login. The magic-link email lands in Mailpit
 `/onboarding`, where you pick a business-type preset. Staff invitations work the
 same way: the invitee's email also lands in Mailpit.
 
+Each seeded business has a public booking page at `/b/demo-<type>`, for
+example http://localhost:3000/b/demo-salon. Book a time as a guest; no login is
+needed.
+
 For M-Pesa callbacks during local
 development, expose port 3000 with a tunnel (for example `cloudflared tunnel
 --url http://localhost:3000` or `ngrok http 3000`) and set `MPESA_CALLBACK_URL`

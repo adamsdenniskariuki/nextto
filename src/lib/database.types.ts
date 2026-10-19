@@ -983,6 +983,7 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      get_public_booking: { Args: { p_booking_id: string }; Returns: Json };
       get_public_booking_page: { Args: { p_slug: string }; Returns: Json };
       get_shared_invoice: { Args: { p_share_token: string }; Returns: Json };
       issue_invoice: {
