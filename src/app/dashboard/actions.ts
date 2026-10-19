@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { CURRENT_BUSINESS_COOKIE, getMemberships, requireUser } from "@/lib/auth";
 import { publicEnv } from "@/lib/env";
 import { createAnonClient } from "@/lib/supabase/anon";
+import { switchBusinessSchema } from "@/lib/validation/dashboard";
 import { fieldErrors, inviteSchema } from "@/lib/validation/schemas";
 
 export type InviteState =
@@ -69,4 +71,19 @@ export async function revokeInvitation(formData: FormData) {
   const { error } = await supabase.from("invitations").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/dashboard");
+}
+
+/** Remember which business the dashboard shows. Only accepts businesses the user belongs to. */
+export async function switchBusiness(formData: FormData) {
+  const { businessId } = switchBusinessSchema.parse(Object.fromEntries(formData));
+  const memberships = await getMemberships();
+  if (!memberships.some((m) => m.business.id === businessId)) return;
+  (await cookies()).set(CURRENT_BUSINESS_COOKIE, businessId, {
+    path: "/dashboard",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  revalidatePath("/dashboard", "layout");
 }

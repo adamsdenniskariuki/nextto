@@ -1,5 +1,9 @@
-import type { Metadata } from "next";
-import { getMemberships, requireUser } from "@/lib/auth";
+import type { Metadata, Route } from "next";
+import Link from "next/link";
+import { getCurrentMembership, requireUser } from "@/lib/auth";
+import { STATUS_LABEL } from "@/lib/booking-status";
+import { getCalendarBookings } from "@/lib/dashboard";
+import { formatTime, localDay, localDaysRange } from "@/lib/datetime";
 import { publicEnv } from "@/lib/env";
 import { formatKES } from "@/lib/money";
 import { revokeInvitation } from "./actions";
@@ -7,17 +11,16 @@ import { InviteForm } from "./invite-form";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
+export default async function DashboardPage() {
   const { supabase } = await requireUser();
-  const memberships = await getMemberships();
-  const { business: businessId } = await searchParams;
-  const current = memberships.find((m) => m.business.id === businessId) ?? memberships[0];
-  if (!current) return null; // the layout already redirects to /onboarding
-  const { business, role } = current;
+  const { business, role } = await getCurrentMembership();
   const isOwner = role === "owner";
+  const today = localDay(new Date(), business.timezone);
+  const { from, to } = localDaysRange(today, today, business.timezone);
 
   // Independent queries run in parallel. RLS scopes every one to this user's businesses.
-  const [services, staff, invitations] = await Promise.all([
+  const [todays, services, staff, invitations] = await Promise.all([
+    getCalendarBookings(business.id, from, to),
     supabase
       .from("services")
       .select("id, name, duration_minutes, price_cents, active")
@@ -45,20 +48,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   return (
     <div className="space-y-8">
       <section>
-        {memberships.length > 1 && (
-          <nav aria-label="Your businesses" className="mb-4 flex flex-wrap gap-2">
-            {memberships.map((m) => (
-              <a
-                key={m.business.id}
-                href={`/dashboard?business=${m.business.id}`}
-                aria-current={m.business.id === business.id ? "page" : undefined}
-                className="rounded-full border border-line px-3 py-1 text-sm aria-[current=page]:border-ink aria-[current=page]:font-semibold"
-              >
-                {m.business.name}
-              </a>
-            ))}
-          </nav>
-        )}
         <p className="eyebrow">{isOwner ? "Owner" : "Staff"}</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{business.name}</h1>
         <p className="mt-2 text-muted">
@@ -70,6 +59,47 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             {bookingUrl}
           </a>
         </p>
+      </section>
+
+      <section aria-labelledby="today-heading" className="card">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="today-heading" className="text-lg font-bold">
+            Today
+          </h2>
+          <Link
+            href={`/dashboard/calendar?view=day&date=${today}` as Route}
+            className="text-sm font-medium text-brand underline-offset-4 hover:underline"
+          >
+            Open calendar
+          </Link>
+        </div>
+        {todays.filter((b) => b.status !== "cancelled").length === 0 ? (
+          <p className="mt-3 text-sm text-muted">Nothing booked today yet.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-line">
+            {todays
+              .filter((b) => b.status !== "cancelled")
+              .map((b) => (
+                <li key={b.id}>
+                  <Link
+                    href={`/dashboard/bookings/${b.id}` as Route}
+                    className="flex gap-3 py-2.5 text-sm hover:bg-surface-2"
+                  >
+                    <span className="w-12 shrink-0 font-semibold">
+                      {formatTime(b.starts_at, business.timezone)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium">{b.customer_name}</span>
+                      <span className="block truncate text-muted">
+                        {b.service_name} · {b.staff_name}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-muted">{STATUS_LABEL[b.status]}</span>
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">

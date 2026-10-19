@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,7 +26,7 @@ export const getMemberships = cache(async () => {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("business_members")
-    .select("role, business:businesses(id, name, slug, business_type, phone)")
+    .select("role, business:businesses(id, name, slug, business_type, phone, timezone)")
     .eq("user_id", userId)
     .order("created_at");
   if (error) throw error;
@@ -34,3 +35,19 @@ export const getMemberships = cache(async () => {
 });
 
 export type Membership = Awaited<ReturnType<typeof getMemberships>>[number];
+
+/** Cookie holding the business the user last switched to. Not a secret: RLS still applies. */
+export const CURRENT_BUSINESS_COOKIE = "nextto_business";
+
+/**
+ * The business the dashboard is showing: the one in the cookie if the user
+ * still belongs to it, otherwise their first. The layout redirects users
+ * with no business to /onboarding, so pages can rely on a result.
+ */
+export const getCurrentMembership = cache(async (): Promise<Membership> => {
+  const memberships = await getMemberships();
+  const wanted = (await cookies()).get(CURRENT_BUSINESS_COOKIE)?.value;
+  const current = memberships.find((m) => m.business.id === wanted) ?? memberships[0];
+  if (!current) redirect("/onboarding");
+  return current;
+});
