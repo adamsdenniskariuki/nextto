@@ -1,0 +1,19 @@
+{
+  "name": "nextto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nextto: bookings, invoicing and M-Pesa payments for service businesses in Kenya.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:lint": "supabase db lint --level warning --fail-on error"
+  },
+  "devDependencies": {
+    "supabase": "^2.120.0"
+  }
+}
