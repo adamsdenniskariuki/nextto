@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { getMemberships, requireUser } from "@/lib/auth";
 import { STATUS_LABEL } from "@/lib/booking-status";
+import { customerIdFor } from "@/lib/customers";
 import { zonedDateTimeToInstant } from "@/lib/datetime";
 import {
   REPEAT_OPTIONS,
@@ -49,30 +50,6 @@ function dbError(error: PostgrestError, field = "_form"): FormState {
 
 const withValues = (state: FormState, values: Record<string, string>): FormState =>
   state.status === "error" ? { ...state, values } : state;
-
-/** Find-or-create a customer by phone. The phone is unique per business. */
-async function customerIdFor(
-  businessId: string,
-  phone: string,
-  name: string,
-): Promise<{ id: string } | { error: PostgrestError }> {
-  const { supabase } = await requireUser();
-  // ignoreDuplicates -> ON CONFLICT DO NOTHING: an existing customer keeps their name.
-  const { error: upsertError } = await supabase
-    .from("customers")
-    .upsert(
-      { business_id: businessId, phone, name },
-      { onConflict: "business_id,phone", ignoreDuplicates: true },
-    );
-  if (upsertError) return { error: upsertError };
-  const { data, error } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("business_id", businessId)
-    .eq("phone", phone)
-    .single();
-  return error ? { error } : { id: data.id };
-}
 
 export async function createBooking(_prev: FormState, formData: FormData): Promise<FormState> {
   const raw = Object.fromEntries(formData);

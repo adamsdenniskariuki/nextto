@@ -8,6 +8,7 @@ const LINKS: { href: Route; label: string }[] = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/calendar", label: "Calendar" },
   { href: "/dashboard/customers", label: "Customers" },
+  { href: "/dashboard/invoices", label: "Invoices" },
 ];
 
 /** A Client Component only because it needs the current path for aria-current. */

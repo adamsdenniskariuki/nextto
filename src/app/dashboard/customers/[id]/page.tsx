@@ -8,6 +8,7 @@ import { formatDayLong, formatTime, localDay } from "@/lib/datetime";
 import { formatKES } from "@/lib/money";
 import { formatKenyanPhone, whatsappLink } from "@/lib/phone";
 import { bookingDetailsSchema } from "@/lib/validation/dashboard";
+import { invoiceSummarySchema, statusLabel } from "@/lib/validation/invoices";
 import { CustomerNotesForm } from "./customer-notes-form";
 
 export const metadata: Metadata = { title: "Customer" };
@@ -29,6 +30,15 @@ export default async function CustomerPage({ params }: PageProps<"/dashboard/cus
     .limit(100);
   if (error) throw error;
   const history = bookingDetailsSchema.parse(data);
+
+  const inv = await supabase
+    .from("invoice_summaries")
+    .select("*")
+    .eq("customer_id", id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (inv.error) throw inv.error;
+  const invoices = invoiceSummarySchema.array().parse(inv.data);
 
   const stats = [
     { label: "Visits", value: String(customer.visits) },
@@ -75,12 +85,20 @@ export default async function CustomerPage({ params }: PageProps<"/dashboard/cus
             <h2 id="history-heading" className="text-lg font-bold">
               History
             </h2>
-            <Link
-              href={`/dashboard/bookings/new?customer=${customer.customer_id}` as Route}
-              className="btn-primary min-h-9 px-4"
-            >
-              New booking
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/dashboard/invoices/new?customer=${customer.customer_id}` as Route}
+                className="btn-secondary min-h-9 px-4"
+              >
+                New invoice
+              </Link>
+              <Link
+                href={`/dashboard/bookings/new?customer=${customer.customer_id}` as Route}
+                className="btn-primary min-h-9 px-4"
+              >
+                New booking
+              </Link>
+            </div>
           </div>
           {history.length === 0 ? (
             <p className="mt-3 text-sm text-muted">No bookings yet.</p>
@@ -116,12 +134,47 @@ export default async function CustomerPage({ params }: PageProps<"/dashboard/cus
           )}
         </section>
 
-        <section aria-labelledby="customer-notes-heading" className="card">
-          <h2 id="customer-notes-heading" className="sr-only">
-            Notes
-          </h2>
-          <CustomerNotesForm customerId={customer.customer_id} notes={customer.notes} />
-        </section>
+        <div className="space-y-6">
+          <section aria-labelledby="customer-invoices-heading" className="card">
+            <h2 id="customer-invoices-heading" className="text-lg font-bold">
+              Invoices
+            </h2>
+            {invoices.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">No invoices or quotes yet.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-line">
+                {invoices.map((inv) => (
+                  <li key={inv.id}>
+                    <Link
+                      href={`/dashboard/invoices/${inv.id}` as Route}
+                      className="flex justify-between gap-4 py-2.5 text-sm hover:bg-surface-2"
+                    >
+                      <span className="font-medium">
+                        {inv.number ?? (inv.kind === "quote" ? "Draft quote" : "Draft invoice")}
+                      </span>
+                      <span className="text-right">
+                        {formatKES(inv.total_cents)}
+                        <span
+                          data-overdue={inv.is_overdue || undefined}
+                          className="block text-muted data-overdue:text-danger"
+                        >
+                          {inv.is_overdue ? "Overdue" : statusLabel(inv.kind, inv.status)}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-labelledby="customer-notes-heading" className="card">
+            <h2 id="customer-notes-heading" className="sr-only">
+              Notes
+            </h2>
+            <CustomerNotesForm customerId={customer.customer_id} notes={customer.notes} />
+          </section>
+        </div>
       </div>
     </div>
   );

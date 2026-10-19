@@ -73,6 +73,16 @@ export function formatDayLong(day: string): string {
   }).format(new Date(`${day}T12:00:00Z`));
 }
 
+/** "2026-10-21" -> "21 Oct 2026" (invoices, lists) */
+export function formatDayShort(day: string): string {
+  return new Intl.DateTimeFormat("en-KE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T12:00:00Z`));
+}
+
 /** An instant as 24-hour local time: "14:30". */
 export function formatTime(instant: string | Date, timeZone: string = DEFAULT_TIMEZONE): string {
   return new Intl.DateTimeFormat("en-GB", {

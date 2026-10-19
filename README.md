@@ -68,7 +68,7 @@ Delivered in increments, each a PR with CI passing:
 2. ✅ Auth, onboarding and presets
 3. ✅ Public booking (try http://localhost:3000/b/demo-salon after `npm run db:start`)
 4. ✅ Dashboard and calendar (live updates via Supabase Realtime)
-5. Invoices and PDF
+5. ✅ Invoices and quotes: VAT, deposits, part payments, PDF and a WhatsApp share link
 6. M-Pesa sandbox
 7. Reports
 8. Polish and deploy
