@@ -37,9 +37,18 @@ export function uniqueEmail(prefix: string) {
 export async function signIn(page: Page, email: string, next = "/dashboard") {
   const sentAt = new Date(Date.now() - 1000);
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-  await expect(page.getByText("Check your inbox")).toBeVisible();
+  const sent = page.getByText("Check your inbox");
+  const limited = page.getByText("Too many requests");
+  // Auth allows one email per address per second (supabase/config.toml
+  // max_frequency); serial tests can sign the same owner in faster than that.
+  for (let attempt = 0; ; attempt++) {
+    await page.getByLabel("Email").fill(email);
+    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+    await expect(sent.or(limited)).toBeVisible();
+    if (await sent.isVisible()) break;
+    expect(attempt, `still rate-limited sending a link to ${email}`).toBeLessThan(3);
+    await page.waitForTimeout(1_500);
+  }
   await page.goto(await magicLinkFor(email, sentAt));
 }
 

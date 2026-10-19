@@ -36,6 +36,7 @@ export function LoginForm({ next }: { next: string }) {
           inputMode="email"
           required
           placeholder="you@example.co.ke"
+          defaultValue={state.status === "error" ? state.email : undefined}
           className="input"
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? "email-error" : undefined}

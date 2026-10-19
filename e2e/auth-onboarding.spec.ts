@@ -12,6 +12,8 @@ test("invalid email shows a field error", async ({ page }) => {
   await page.getByLabel("Email").fill("not-an-email");
   await page.getByRole("button", { name: "Email me a sign-in link" }).click();
   await expect(page.getByText("Enter a valid email address")).toBeVisible();
+  // What was typed survives the round trip, so it can be corrected, not retyped.
+  await expect(page.getByLabel("Email")).toHaveValue("not-an-email");
 });
 
 test("a bad magic link is rejected", async ({ page }) => {

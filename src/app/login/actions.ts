@@ -7,7 +7,8 @@ import { fieldErrors, loginSchema } from "@/lib/validation/schemas";
 export type LoginState =
   | { status: "idle" }
   | { status: "sent"; email: string }
-  | { status: "error"; errors: Record<string, string> };
+  // `email` is echoed back because React resets the form after an action runs.
+  | { status: "error"; errors: Record<string, string>; email: string };
 
 /** Server Action: email a magic link. Works for new and returning users. */
 export async function sendMagicLink(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -15,7 +16,8 @@ export async function sendMagicLink(_prev: LoginState, formData: FormData): Prom
     email: formData.get("email"),
     next: formData.get("next") ?? undefined,
   });
-  if (!parsed.success) return { status: "error", errors: fieldErrors(parsed.error) };
+  const typed = String(formData.get("email") ?? "");
+  if (!parsed.success) return { status: "error", errors: fieldErrors(parsed.error), email: typed };
 
   const { email, next } = parsed.data;
   const supabase = await createClient();
@@ -33,7 +35,7 @@ export async function sendMagicLink(_prev: LoginState, formData: FormData): Prom
       error.status === 429
         ? "Too many requests. Please wait a minute and try again."
         : "We couldn't send the link. Please try again.";
-    return { status: "error", errors: { _form: message } };
+    return { status: "error", errors: { _form: message }, email: typed };
   }
   return { status: "sent", email };
 }
