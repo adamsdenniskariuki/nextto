@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  database:
+    name: Database (migrations, lint, pgTAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check migration file names
+        shell: bash
+        run: |
+          # Every migration must be <14-digit timestamp>_<snake_case>.sql so
+          # the order is unambiguous.
+          bad=$(ls supabase/migrations | grep -Ev '^[0-9]{14}_[a-z0-9_]+\.sql$' || true)
+          if [ -n "$bad" ]; then echo "Badly named migrations:"; echo "$bad"; exit 1; fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (pins the Supabase CLI version)
+        run: npm ci
+
+      # Starts only Postgres, then applies every migration and seed.sql from
+      # scratch. A broken migration fails here.
+      - name: Start Postgres and apply migrations + seed
+        run: npx supabase db start
+
+      - name: Re-apply from scratch (migration reset check)
+        run: npx supabase db reset
+
+      - name: Lint database schema
+        run: npm run db:lint
+
+      - name: pgTAP and RLS tests
+        run: npm run db:test
+
+      - name: Stop
+        if: always()
+        run: npx supabase stop --no-backup
