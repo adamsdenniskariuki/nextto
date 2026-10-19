@@ -66,7 +66,7 @@ Delivered in increments, each a PR with CI passing:
 
 1. ✅ Schema, RLS and SQL functions with tests
 2. ✅ Auth, onboarding and presets
-3. Public booking
+3. ✅ Public booking (try http://localhost:3000/b/demo-salon after `npm run db:start`)
 4. Dashboard and calendar
 5. Invoices and PDF
 6. M-Pesa sandbox

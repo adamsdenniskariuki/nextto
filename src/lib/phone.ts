@@ -19,3 +19,10 @@ export function formatKenyanPhone(e164: string): string {
   const m = /^\+254(\d{3})(\d{3})(\d{3})$/.exec(e164);
   return m ? `+254 ${m[1]} ${m[2]} ${m[3]}` : e164;
 }
+
+/** A click-to-chat link. wa.me wants digits only, with no "+". */
+export function whatsappLink(e164: string, text?: string): string {
+  const url = new URL(`https://wa.me/${e164.replace(/\D/g, "")}`);
+  if (text) url.searchParams.set("text", text);
+  return url.href;
+}

@@ -1,11 +1,10 @@
 "use server";
 
-import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import type { Database } from "@/lib/database.types";
 import { publicEnv } from "@/lib/env";
+import { createAnonClient } from "@/lib/supabase/anon";
 import { fieldErrors, inviteSchema } from "@/lib/validation/schemas";
 
 export type InviteState =
@@ -45,11 +44,7 @@ export async function inviteMember(_prev: InviteState, formData: FormData): Prom
 
   // Email the invitee a magic link that lands on /invite/<token>. A fresh
   // session-less client is used so the owner's own cookies are untouched.
-  const mailer = createAnonClient<Database>(
-    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
-    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+  const mailer = createAnonClient();
   const { error: mailError } = await mailer.auth.signInWithOtp({
     email,
     options: {
