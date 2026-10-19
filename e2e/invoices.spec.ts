@@ -114,19 +114,22 @@ test("quote: issue → accept → becomes a draft invoice", async ({ page }, tes
 
 test("a booking can be invoiced from its page", async ({ page }, testInfo) => {
   const type = businessFor(testInfo.project.name);
-  await signIn(page, `owner+${type}@nextto.test`, "/dashboard/customers?q=0712345678");
-  await page.getByRole("link", { name: /Wanjiku/ }).click();
+  const name = `Booked Guest ${Math.random().toString(36).slice(2, 7)}`;
+  await signIn(page, `owner+${type}@nextto.test`, "/dashboard/bookings/new");
 
-  // Seeded history includes cancelled bookings, which can't be invoiced.
-  const links = page.getByRole("link", { name: /\d{1,2}:\d{2}/ });
-  await expect(links.first()).toBeVisible();
-  const hrefs = await links.evaluateAll((els) => els.map((e) => e.getAttribute("href")!));
-  const button = page.getByRole("button", { name: "Invoice this booking" });
-  for (const href of hrefs.filter((h) => h.startsWith("/dashboard/bookings/"))) {
-    await page.goto(href);
-    if (await button.isVisible()) break;
-  }
-  await button.click();
+  // A fresh walk-in, outside opening hours on a random future day, so it never clashes.
+  const days = 30 + Math.floor(Math.random() * 300);
+  const date = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  const time = `0${Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 12) * 5).padStart(2, "0")}`;
+  await page.getByLabel("Phone").fill(randomPhone());
+  await page.getByLabel("Name").fill(name);
+  await page.getByLabel("Date").fill(date);
+  await page.getByLabel("Time").fill(time);
+  await page.getByRole("button", { name: "Create booking" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/bookings\/[0-9a-f-]{36}$/);
+
+  await page.getByRole("button", { name: "Invoice this booking" }).click();
   await expect(page).toHaveURL(INVOICE_URL);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(name);
   await expect(page.getByLabel("Item 1 description")).not.toHaveValue("");
 });
