@@ -8,6 +8,7 @@ import { getMemberships } from "@/lib/auth";
 import { formatKES } from "@/lib/money";
 import { formatKenyanPhone, whatsappLink } from "@/lib/phone";
 import { NotesForm, RescheduleForm, StatusForm } from "./booking-forms";
+import { createInvoiceFromBooking } from "../../invoices/actions";
 
 export const metadata: Metadata = { title: "Booking" };
 
@@ -137,6 +138,23 @@ export default async function BookingPage({ params }: PageProps<"/dashboard/book
             </h2>
             <NotesForm bookingId={booking.id} notes={booking.notes} />
           </section>
+
+          {booking.status !== "cancelled" && (
+            <section aria-labelledby="invoice-heading" className="card space-y-3">
+              <h2 id="invoice-heading" className="text-lg font-bold">
+                Invoice
+              </h2>
+              <p className="text-sm text-muted">
+                Starts a draft with this service and price. If one exists already, opens it.
+              </p>
+              <form action={createInvoiceFromBooking}>
+                <input type="hidden" name="bookingId" value={booking.id} />
+                <button type="submit" className="btn-secondary">
+                  Invoice this booking
+                </button>
+              </form>
+            </section>
+          )}
         </div>
       </div>
     </div>

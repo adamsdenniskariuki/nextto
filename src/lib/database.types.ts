@@ -419,6 +419,13 @@ export type Database = {
             foreignKeyName: "invoice_items_invoice_id_business_id_fkey";
             columns: ["invoice_id", "business_id"];
             isOneToOne: false;
+            referencedRelation: "invoice_summaries";
+            referencedColumns: ["id", "business_id"];
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_business_id_fkey";
+            columns: ["invoice_id", "business_id"];
+            isOneToOne: false;
             referencedRelation: "invoices";
             referencedColumns: ["id", "business_id"];
           },
@@ -628,6 +635,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "businesses";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_invoice_id_business_id_fkey";
+            columns: ["invoice_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "invoice_summaries";
+            referencedColumns: ["id", "business_id"];
           },
           {
             foreignKeyName: "payments_invoice_id_business_id_fkey";
@@ -971,6 +985,67 @@ export type Database = {
           },
         ];
       };
+      invoice_summaries: {
+        Row: {
+          amount_due_now_cents: number | null;
+          amount_paid_cents: number | null;
+          balance_cents: number | null;
+          booking_id: string | null;
+          business_id: string | null;
+          created_at: string | null;
+          customer_id: string | null;
+          customer_name: string | null;
+          customer_phone: string | null;
+          days_overdue: number | null;
+          deposit_cents: number | null;
+          due_date: string | null;
+          id: string | null;
+          is_overdue: boolean | null;
+          issue_date: string | null;
+          kind: Database["public"]["Enums"]["document_kind"] | null;
+          number: string | null;
+          status: Database["public"]["Enums"]["invoice_status"] | null;
+          total_cents: number | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: "invoices_booking_id_business_id_fkey";
+            columns: ["booking_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "booking_details";
+            referencedColumns: ["id", "business_id"];
+          },
+          {
+            foreignKeyName: "invoices_booking_id_business_id_fkey";
+            columns: ["booking_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "bookings";
+            referencedColumns: ["id", "business_id"];
+          },
+          {
+            foreignKeyName: "invoices_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoices_customer_id_business_id_fkey";
+            columns: ["customer_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "customer_stats";
+            referencedColumns: ["customer_id", "business_id"];
+          },
+          {
+            foreignKeyName: "invoices_customer_id_business_id_fkey";
+            columns: ["customer_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id", "business_id"];
+          },
+        ];
+      };
     };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
@@ -1032,6 +1107,7 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      convert_quote_to_invoice: { Args: { p_quote_id: string }; Returns: string };
       create_booking: {
         Args: {
           p_customer_id: string;
@@ -1097,6 +1173,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_invoice_from_booking: { Args: { p_booking_id: string }; Returns: string };
       create_mpesa_payment: {
         Args: {
           p_amount_cents: number;
@@ -1169,6 +1246,7 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      decline_quote: { Args: { p_quote_id: string }; Returns: undefined };
       get_public_booking: { Args: { p_booking_id: string }; Returns: Json };
       get_public_booking_page: { Args: { p_slug: string }; Returns: Json };
       get_shared_invoice: { Args: { p_share_token: string }; Returns: Json };
@@ -1281,6 +1359,21 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      save_invoice_draft: {
+        Args: {
+          p_booking_id?: string;
+          p_business_id: string;
+          p_customer_id: string;
+          p_deposit_cents?: number;
+          p_due_date?: string;
+          p_invoice_id: string;
+          p_items: Json;
+          p_kind: Database["public"]["Enums"]["document_kind"];
+          p_notes?: string;
+          p_vat_rate_bp?: number;
+        };
+        Returns: string;
       };
       void_invoice: {
         Args: { p_invoice_id: string };

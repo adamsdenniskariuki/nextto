@@ -2,27 +2,10 @@
 
 import { useActionState } from "react";
 import { NEXT_STATUSES, type BookingStatus } from "@/lib/booking-status";
+import { Feedback } from "../../form-feedback";
 import { changeStatus, rescheduleBooking, saveBookingNotes, type FormState } from "../actions";
 
 const idle: FormState = { status: "idle" };
-
-function Feedback({ state, id }: { state: FormState; id?: string }) {
-  if (state.status === "ok") {
-    return (
-      <p role="status" className="text-sm text-mpesa">
-        {state.message}
-      </p>
-    );
-  }
-  if (state.status === "error" && state.errors._form) {
-    return (
-      <p id={id} className="field-error" role="alert">
-        {state.errors._form}
-      </p>
-    );
-  }
-  return null;
-}
 
 function statusButtonLabel(from: BookingStatus, to: BookingStatus): string {
   switch (to) {

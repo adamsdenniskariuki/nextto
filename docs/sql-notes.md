@@ -66,6 +66,10 @@ Index Scan using invoices_outstanding_idx on invoices
 - Paid, void and draft invoices (the vast majority over time) are never
   stored in this index at all, which keeps it small.
 
+The invoice list's "Unpaid" and "Overdue" filters read the `invoice_summaries`
+invoker view with the same predicate, so they use this index too: Postgres
+inlines a simple view into the query before planning, so the view costs nothing.
+
 ## 3. The M-Pesa expiry sweep (pg_cron, every minute)
 
 ```sql

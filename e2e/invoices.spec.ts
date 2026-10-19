@@ -1,0 +1,132 @@
+import { expect, test, type Page } from "@playwright/test";
+import { signIn } from "./helpers";
+
+// One seeded owner per project, signed in again for each test (a new magic link
+// replaces the old one), so keep the tests in this file one after another.
+test.describe.configure({ mode: "serial" });
+
+const businessFor = (project: string) => (project === "mobile" ? "tutor" : "mechanic");
+const randomPhone = () => `07${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`;
+const INVOICE_URL = /\/dashboard\/invoices\/[0-9a-f-]{36}$/;
+
+/** Wide tables and inputs must scroll inside their card, never the whole page on a phone. */
+async function expectNoSideScroll(page: Page) {
+  // Compare with the device width: mobile browsers widen the layout viewport to fit overflow.
+  const width = page.viewportSize()!.width;
+  const overflowing = await page.evaluate(
+    (w) =>
+      [...document.querySelectorAll("body *")]
+        .filter((el) => el.getBoundingClientRect().right > w + 1)
+        // Content inside its own scroll container (e.g. a wide table) is fine.
+        .filter((el) => {
+          for (let a = el.parentElement; a; a = a.parentElement) {
+            if (getComputedStyle(a).overflowX !== "visible") return false;
+          }
+          return true;
+        })
+        .filter(
+          (el) => !el.parentElement || el.parentElement.getBoundingClientRect().right <= w + 1,
+        )
+        .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 80)}`),
+    width,
+  );
+  expect(overflowing, `elements wider than ${width}px`).toEqual([]);
+}
+
+async function fillFirstItem(page: Page, description: string, qty: string, price: string) {
+  await page.getByLabel("Item 1 description").fill(description);
+  await page.getByLabel("Qty").first().fill(qty);
+  await page.getByLabel("Unit price (KES)").first().fill(price);
+}
+
+test("invoice: draft → issue → part payment → paid → shared link and PDF", async ({
+  page,
+  browser,
+}, testInfo) => {
+  test.slow();
+  const type = businessFor(testInfo.project.name);
+  const name = `Invoice Guest ${Math.random().toString(36).slice(2, 7)}`;
+  await signIn(page, `owner+${type}@nextto.test`, "/dashboard/invoices/new");
+  await expect(page.getByRole("heading", { name: /New invoice/ })).toBeVisible();
+
+  await page.getByLabel("Phone").fill(randomPhone());
+  await page.getByLabel("Name", { exact: true }).fill(name);
+  await fillFirstItem(page, "Full service", "2", "500");
+  await page.getByLabel("VAT").selectOption("0");
+  await expect(page.getByTestId("editor-total")).toHaveText(/1,000/);
+
+  await expectNoSideScroll(page);
+  await page.getByRole("button", { name: "Save draft invoice" }).click();
+  await expect(page).toHaveURL(INVOICE_URL);
+
+  await page.getByRole("button", { name: "Issue invoice" }).click();
+  await expect(page.getByTestId("doc-number")).toHaveText(/INV-\d{4}-\d{4}/);
+  await expect(page.getByTestId("doc-balance")).toHaveText(/1,000/);
+
+  // A partial cash payment, then the rest (the form suggests the balance).
+  await expectNoSideScroll(page);
+  await page.getByLabel("Amount (KES)").fill("400");
+  await page.getByRole("button", { name: "Record payment" }).click();
+  await expect(page.getByTestId("doc-balance")).toHaveText(/600/);
+  await expect(page.getByText(/Invoice · Part paid/)).toBeVisible();
+
+  await expect(page.getByLabel("Amount (KES)")).toHaveValue("600");
+  await page.getByRole("button", { name: "Record payment" }).click();
+  await expect(page.getByText(/Invoice · Paid/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record payment" })).toBeHidden();
+
+  // The share link works without signing in, and so does its PDF.
+  const shareUrl = (await page.getByTestId("share-url").textContent())!.trim();
+  const guest = await browser.newContext();
+  const shared = await guest.newPage();
+  await shared.goto(shareUrl);
+  await expect(shared.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(shared.getByText(name)).toBeVisible();
+  await expectNoSideScroll(shared);
+  await expect(shared.getByTestId("doc-balance")).toHaveText(/^Ksh\s*0(\.00)?$/);
+  const pdf = await guest.request.get(`${shareUrl}/pdf`);
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  await guest.close();
+});
+
+test("quote: issue → accept → becomes a draft invoice", async ({ page }, testInfo) => {
+  const type = businessFor(testInfo.project.name);
+  await signIn(page, `owner+${type}@nextto.test`, "/dashboard/invoices/new?kind=quote");
+  await expect(page.getByRole("heading", { name: /New quote/ })).toBeVisible();
+
+  await page.getByLabel("Phone").fill(randomPhone());
+  await page.getByLabel("Name", { exact: true }).fill("Quote Guest");
+  await fillFirstItem(page, "Engine overhaul", "1", "25000");
+  await page.getByRole("button", { name: "Save draft quote" }).click();
+  await expect(page).toHaveURL(INVOICE_URL);
+  const quoteUrl = page.url();
+
+  await page.getByRole("button", { name: "Issue quote" }).click();
+  await expect(page.getByTestId("doc-number")).toHaveText(/QUO-\d{4}-\d{4}/);
+  await page.getByRole("button", { name: "Accept → invoice" }).click();
+
+  await page.waitForURL((url) => INVOICE_URL.test(url.pathname) && url.href !== quoteUrl);
+  await expect(page.getByLabel("Item 1 description")).toHaveValue("Engine overhaul");
+  await expect(page.getByRole("button", { name: "Issue invoice" })).toBeVisible();
+});
+
+test("a booking can be invoiced from its page", async ({ page }, testInfo) => {
+  const type = businessFor(testInfo.project.name);
+  await signIn(page, `owner+${type}@nextto.test`, "/dashboard/customers?q=0712345678");
+  await page.getByRole("link", { name: /Wanjiku/ }).click();
+
+  // Seeded history includes cancelled bookings, which can't be invoiced.
+  const links = page.getByRole("link", { name: /\d{1,2}:\d{2}/ });
+  await expect(links.first()).toBeVisible();
+  const hrefs = await links.evaluateAll((els) => els.map((e) => e.getAttribute("href")!));
+  const button = page.getByRole("button", { name: "Invoice this booking" });
+  for (const href of hrefs.filter((h) => h.startsWith("/dashboard/bookings/"))) {
+    await page.goto(href);
+    if (await button.isVisible()) break;
+  }
+  await button.click();
+  await expect(page).toHaveURL(INVOICE_URL);
+  await expect(page.getByLabel("Item 1 description")).not.toHaveValue("");
+});
