@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signIn } from "./helpers";
+import { expectNoSideScroll, signIn } from "./helpers";
 
 // One seeded owner per project, signed in again for each test (a new magic link
 // replaces the old one), so keep the tests in this file one after another.
@@ -8,30 +8,6 @@ test.describe.configure({ mode: "serial" });
 const businessFor = (project: string) => (project === "mobile" ? "tutor" : "mechanic");
 const randomPhone = () => `07${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`;
 const INVOICE_URL = /\/dashboard\/invoices\/[0-9a-f-]{36}$/;
-
-/** Wide tables and inputs must scroll inside their card, never the whole page on a phone. */
-async function expectNoSideScroll(page: Page) {
-  // Compare with the device width: mobile browsers widen the layout viewport to fit overflow.
-  const width = page.viewportSize()!.width;
-  const overflowing = await page.evaluate(
-    (w) =>
-      [...document.querySelectorAll("body *")]
-        .filter((el) => el.getBoundingClientRect().right > w + 1)
-        // Content inside its own scroll container (e.g. a wide table) is fine.
-        .filter((el) => {
-          for (let a = el.parentElement; a; a = a.parentElement) {
-            if (getComputedStyle(a).overflowX !== "visible") return false;
-          }
-          return true;
-        })
-        .filter(
-          (el) => !el.parentElement || el.parentElement.getBoundingClientRect().right <= w + 1,
-        )
-        .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 80)}`),
-    width,
-  );
-  expect(overflowing, `elements wider than ${width}px`).toEqual([]);
-}
 
 /** The manual (cash/card/bank) form sits in a <details> under the M-Pesa form. */
 async function manualPayments(page: Page) {
