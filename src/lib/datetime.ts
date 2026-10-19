@@ -92,6 +92,71 @@ export function formatDateTimeLong(
   return `${formatDayLong(localDay(d, timeZone))} at ${formatTime(d, timeZone)}`;
 }
 
+/** The offset of `timeZone` from UTC at `instant`, in minutes (Nairobi: +180). */
+export function zoneOffsetMinutes(instant: Date, timeZone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(instant)
+      .map((p) => [p.type, p.value]),
+  );
+  const asUTC = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return Math.round((asUTC - Math.floor(instant.getTime() / 1000) * 1000) / 60_000);
+}
+
+/**
+ * Wall-clock time in a zone -> the real instant. The TypeScript twin of
+ * Postgres's `(day + time) AT TIME ZONE tz`.
+ *
+ * Guess with the offset at the naive UTC reading, then correct once more in
+ * case that guess crossed a daylight-saving change.
+ */
+export function zonedDateTimeToInstant(day: string, time: string, timeZone: string): Date {
+  const naive = new Date(`${day}T${time.length === 5 ? `${time}:00` : time}Z`);
+  let instant = new Date(naive.getTime() - zoneOffsetMinutes(naive, timeZone) * 60_000);
+  instant = new Date(naive.getTime() - zoneOffsetMinutes(instant, timeZone) * 60_000);
+  return instant;
+}
+
+/** Minutes since local midnight of `instant` in `timeZone` (10:30 -> 630). */
+export function minutesIntoDay(instant: string | Date, timeZone: string): number {
+  const [h, m] = formatTime(instant, timeZone).split(":").map(Number);
+  return h! * 60 + m!;
+}
+
+/** The Monday on or before `day` (weeks start on Monday in Kenya). */
+export function startOfWeek(day: string): string {
+  const dow = new Date(`${day}T00:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDays(day, -((dow + 6) % 7));
+}
+
+/** [local midnight of `first`, local midnight after `last`) as instants. */
+export function localDaysRange(
+  first: string,
+  last: string,
+  timeZone: string,
+): { from: Date; to: Date } {
+  return {
+    from: zonedDateTimeToInstant(first, "00:00", timeZone),
+    to: zonedDateTimeToInstant(addDays(last, 1), "00:00", timeZone),
+  };
+}
+
 /** Duration in minutes as "45 min", "1 h" or "1 h 30 min". */
 export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);

@@ -37,6 +37,10 @@ The exclusion constraint `bookings_no_overlap` is backed by a similar GiST
 index on `(staff_id, during)`. It's partial (`where status in (...)`), so
 cancelled bookings never block a slot.
 
+The dashboard's `calendar_bookings(business, from, to, staff)` function runs
+this same `&&` query (through the `booking_details` view), so the calendar's
+day and week views use this index.
+
 ## 2. Receivables: outstanding invoices
 
 ```sql
@@ -100,6 +104,33 @@ Limit
 bitmap scan plus sort, because a handful of rows is cheap to sort. With many
 bookings per customer, expect a plain `Index Scan` with no Sort node. Check
 again with `explain analyze` once real data exists.
+
+## 4b. Customer search: trigram index for `ILIKE '%term%'`
+
+A B-tree can only help with a _prefix_ (`ILIKE 'wanj%'`). The dashboard
+searches anywhere in the name, so `customers_name_trgm_idx` is a **GIN
+index with `gin_trgm_ops`** (from `pg_trgm`). It splits names into
+three-letter chunks, so any substring of three or more characters can use it:
+
+```sql
+explain (costs off)
+select * from customers where name ilike '%wanj%';
+```
+
+```
+Bitmap Heap Scan on customers
+  Recheck Cond: (name ~~* '%wanj%'::text)
+  ->  Bitmap Index Scan on customers_name_trgm_idx
+```
+
+The **Recheck** is expected: trigram matches are candidates, and Postgres
+confirms each one against the real row. When the query also filters by
+`business_id` (as the `customer_stats` view always does under RLS), the
+planner often prefers the `(business_id, phone)` unique index and filters
+names afterwards, because one business has few customers. Both plans are
+fine; the trigram index matters when a business has thousands of customers.
+The query goes through a `security_invoker` view, so RLS still applies to
+the underlying tables.
 
 ## 5. RLS helpers and `(select ...)` wrapping
 

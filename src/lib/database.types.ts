@@ -124,6 +124,13 @@ export type Database = {
             foreignKeyName: "bookings_customer_id_business_id_fkey";
             columns: ["customer_id", "business_id"];
             isOneToOne: false;
+            referencedRelation: "customer_stats";
+            referencedColumns: ["customer_id", "business_id"];
+          },
+          {
+            foreignKeyName: "bookings_customer_id_business_id_fkey";
+            columns: ["customer_id", "business_id"];
+            isOneToOne: false;
             referencedRelation: "customers";
             referencedColumns: ["id", "business_id"];
           },
@@ -505,6 +512,13 @@ export type Database = {
             foreignKeyName: "invoices_booking_id_business_id_fkey";
             columns: ["booking_id", "business_id"];
             isOneToOne: false;
+            referencedRelation: "booking_details";
+            referencedColumns: ["id", "business_id"];
+          },
+          {
+            foreignKeyName: "invoices_booking_id_business_id_fkey";
+            columns: ["booking_id", "business_id"];
+            isOneToOne: false;
             referencedRelation: "bookings";
             referencedColumns: ["id", "business_id"];
           },
@@ -514,6 +528,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "businesses";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoices_customer_id_business_id_fkey";
+            columns: ["customer_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "customer_stats";
+            referencedColumns: ["customer_id", "business_id"];
           },
           {
             foreignKeyName: "invoices_customer_id_business_id_fkey";
@@ -587,6 +608,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_business_id_fkey";
+            columns: ["booking_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "booking_details";
+            referencedColumns: ["id", "business_id"];
+          },
           {
             foreignKeyName: "payments_booking_id_business_id_fkey";
             columns: ["booking_id", "business_id"];
@@ -847,7 +875,102 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      booking_details: {
+        Row: {
+          business_id: string | null;
+          created_at: string | null;
+          customer_id: string | null;
+          customer_name: string | null;
+          customer_phone: string | null;
+          deposit_cents: number | null;
+          during: unknown;
+          ends_at: string | null;
+          id: string | null;
+          notes: string | null;
+          price_cents: number | null;
+          series_id: string | null;
+          service_id: string | null;
+          service_name: string | null;
+          source: Database["public"]["Enums"]["booking_source"] | null;
+          staff_color: string | null;
+          staff_id: string | null;
+          staff_name: string | null;
+          starts_at: string | null;
+          status: Database["public"]["Enums"]["booking_status"] | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: "bookings_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bookings_customer_id_business_id_fkey";
+            columns: ["customer_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "customer_stats";
+            referencedColumns: ["customer_id", "business_id"];
+          },
+          {
+            foreignKeyName: "bookings_customer_id_business_id_fkey";
+            columns: ["customer_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id", "business_id"];
+          },
+          {
+            foreignKeyName: "bookings_series_id_business_id_fkey";
+            columns: ["series_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "booking_series";
+            referencedColumns: ["id", "business_id"];
+          },
+          {
+            foreignKeyName: "bookings_service_id_business_id_fkey";
+            columns: ["service_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "business_id"];
+          },
+          {
+            foreignKeyName: "bookings_staff_id_business_id_fkey";
+            columns: ["staff_id", "business_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id", "business_id"];
+          },
+        ];
+      };
+      customer_stats: {
+        Row: {
+          business_id: string | null;
+          cancellations: number | null;
+          completed_value_cents: number | null;
+          created_at: string | null;
+          customer_id: string | null;
+          email: string | null;
+          last_visit_at: string | null;
+          name: string | null;
+          next_visit_at: string | null;
+          no_shows: number | null;
+          phone: string | null;
+          upcoming: number | null;
+          visits: number | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: "customers_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
@@ -877,6 +1000,69 @@ export type Database = {
           p_starts_at: string;
         };
         Returns: Json;
+      };
+      calendar_bookings: {
+        Args: { p_business_id: string; p_from: string; p_to: string };
+        Returns: {
+          business_id: string | null;
+          created_at: string | null;
+          customer_id: string | null;
+          customer_name: string | null;
+          customer_phone: string | null;
+          deposit_cents: number | null;
+          during: unknown;
+          ends_at: string | null;
+          id: string | null;
+          notes: string | null;
+          price_cents: number | null;
+          series_id: string | null;
+          service_id: string | null;
+          service_name: string | null;
+          source: Database["public"]["Enums"]["booking_source"] | null;
+          staff_color: string | null;
+          staff_id: string | null;
+          staff_name: string | null;
+          starts_at: string | null;
+          status: Database["public"]["Enums"]["booking_status"] | null;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "booking_details";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      create_booking: {
+        Args: {
+          p_customer_id: string;
+          p_notes?: string;
+          p_service_id: string;
+          p_staff_id: string;
+          p_starts_at: string;
+        };
+        Returns: {
+          business_id: string;
+          cancelled_at: string | null;
+          created_at: string;
+          customer_id: string;
+          deposit_cents: number;
+          during: unknown;
+          id: string;
+          notes: string | null;
+          price_cents: number;
+          series_id: string | null;
+          service_id: string;
+          source: Database["public"]["Enums"]["booking_source"];
+          staff_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       create_business: {
         Args: {
@@ -1069,6 +1255,32 @@ export type Database = {
           staff_id: string;
           utilisation_pct: number;
         }[];
+      };
+      reschedule_booking: {
+        Args: { p_booking_id: string; p_staff_id?: string; p_starts_at: string };
+        Returns: {
+          business_id: string;
+          cancelled_at: string | null;
+          created_at: string;
+          customer_id: string;
+          deposit_cents: number;
+          during: unknown;
+          id: string;
+          notes: string | null;
+          price_cents: number;
+          series_id: string | null;
+          service_id: string;
+          source: Database["public"]["Enums"]["booking_source"];
+          staff_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       void_invoice: {
         Args: { p_invoice_id: string };
