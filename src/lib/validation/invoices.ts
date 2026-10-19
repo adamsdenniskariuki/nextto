@@ -282,3 +282,30 @@ export const manualPaymentSchema = z.object({
 });
 
 export const documentActionSchema = z.object({ invoiceId: z.uuid() });
+/**
+ * Staff asking a customer to pay with M-Pesa (STK push). Exactly one target.
+ * M-Pesa takes whole shillings; SQL (prepare_mpesa_request) re-checks the
+ * amount against the balance, so this is only for instant feedback.
+ */
+export const mpesaRequestSchema = z
+  .object({
+    invoiceId: z.uuid().optional(),
+    bookingId: z.uuid().optional(),
+    phone: phoneSchema,
+    amount: kesAmount("An amount like 1,500")
+      .pipe(
+        z
+          .number()
+          .int()
+          .refine((c) => c % 100 === 0, "M-Pesa takes whole shillings only")
+          .refine((c) => c <= 25_000_000, "M-Pesa allows at most Ksh 250,000"),
+      )
+      .optional()
+      .transform((c) => c || undefined),
+  })
+  .refine((v) => Boolean(v.invoiceId) !== Boolean(v.bookingId), {
+    message: "Choose an invoice or a booking",
+    path: ["_form"],
+  });
+
+export type MpesaRequestInput = z.output<typeof mpesaRequestSchema>;

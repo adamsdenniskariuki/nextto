@@ -2,6 +2,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InvoiceDocument } from "@/components/invoice-document";
+import { RefreshWhilePending } from "@/components/refresh-while-pending";
 import { getMemberships } from "@/lib/auth";
 import { getTeamAndServices } from "@/lib/dashboard";
 import { formatDateTimeLong } from "@/lib/datetime";
@@ -9,7 +10,9 @@ import { publicEnv } from "@/lib/env";
 import { getInvoice, getSharedInvoice } from "@/lib/invoices";
 import { centsToInput, formatKES } from "@/lib/money";
 import { formatKenyanPhone, whatsappLink } from "@/lib/phone";
+import { mpesaEnabled } from "@/lib/server-env";
 import { MANUAL_PAYMENT_METHODS, statusLabel, vatOptions } from "@/lib/validation/invoices";
+import { MpesaRequestForm } from "../../mpesa-request-form";
 import { InvoiceEditor } from "../invoice-editor";
 import {
   CopyLinkButton,
@@ -111,6 +114,7 @@ export default async function InvoicePage({ params }: PageProps<"/dashboard/invo
   if (!doc) notFound();
   const shareUrl = `${publicEnv.NEXT_PUBLIC_SITE_URL}/i/${invoice.share_token}`;
   const open = invoice.status === "issued" || invoice.status === "partially_paid";
+  const waitingMpesa = invoice.payments.some((p) => p.method === "mpesa" && p.status === "pending");
   const message = isQuote
     ? `Hi ${invoice.customer_name}, here is your quote ${invoice.number} from ${business.name} for ${formatKES(invoice.total_cents)}: ${shareUrl}`
     : `Hi ${invoice.customer_name}, here is invoice ${invoice.number} from ${business.name}. Amount due: ${formatKES(invoice.amount_due_now_cents || invoice.balance_cents)}. View or download: ${shareUrl}`;
@@ -203,7 +207,7 @@ export default async function InvoicePage({ params }: PageProps<"/dashboard/invo
                       </span>
                       <span
                         data-status={p.status}
-                        className="font-semibold tabular-nums data-[status=succeeded]:text-mpesa data-[status=failed]:text-muted data-[status=failed]:line-through"
+                        className="font-semibold tabular-nums data-[status=succeeded]:text-mpesa data-[status=failed]:text-muted data-[status=failed]:line-through data-[status=cancelled]:text-muted data-[status=cancelled]:line-through"
                       >
                         {formatKES(p.amount_cents)}
                       </span>
@@ -218,11 +222,33 @@ export default async function InvoicePage({ params }: PageProps<"/dashboard/invo
                       Deposit due now: <strong>{formatKES(invoice.amount_due_now_cents)}</strong>
                     </p>
                   )}
-                  <PaymentForm
-                    invoiceId={invoice.id}
-                    suggested={centsToInput(invoice.balance_cents)}
-                  />
-                  <p className="text-xs text-muted">M-Pesa STK push is coming next.</p>
+                  {waitingMpesa ? (
+                    <RefreshWhilePending label="Waiting for the customer to enter their M-Pesa PIN…" />
+                  ) : mpesaEnabled() ? (
+                    <MpesaRequestForm
+                      invoiceId={invoice.id}
+                      phone={formatKenyanPhone(invoice.customer_phone)}
+                      // M-Pesa takes whole shillings: suggest the due amount without cents.
+                      suggestedAmount={centsToInput(
+                        Math.floor(invoice.amount_due_now_cents / 100) * 100,
+                      )}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted">
+                      M-Pesa isn&apos;t configured on this server (see docs/SETUP.md).
+                    </p>
+                  )}
+                  <details className="border-t border-line pt-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Record a cash, card or bank payment
+                    </summary>
+                    <div className="mt-3">
+                      <PaymentForm
+                        invoiceId={invoice.id}
+                        suggested={centsToInput(invoice.balance_cents)}
+                      />
+                    </div>
+                  </details>
                 </>
               )}
             </section>

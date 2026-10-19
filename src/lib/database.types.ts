@@ -1286,7 +1286,15 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      latest_mpesa_attempt: {
+        Args: { p_booking_id?: string; p_invoice_id?: string };
+        Returns: Json;
+      };
       normalize_phone: { Args: { p_phone: string }; Returns: string };
+      prepare_mpesa_request: {
+        Args: { p_amount_cents?: number; p_booking_id?: string; p_invoice_id?: string };
+        Returns: Json;
+      };
       record_mpesa_callback: { Args: { p_payload: Json }; Returns: Json };
       report_busiest_hours: {
         Args: { p_business_id: string; p_from: string; p_to: string };

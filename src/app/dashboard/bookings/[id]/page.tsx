@@ -2,11 +2,15 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { STATUS_LABEL, canReschedule } from "@/lib/booking-status";
-import { getBooking, getTeamAndServices } from "@/lib/dashboard";
+import { RefreshWhilePending } from "@/components/refresh-while-pending";
+import { getBooking, getBookingPayments, getTeamAndServices } from "@/lib/dashboard";
 import { formatDateTimeLong, formatTime, localDay } from "@/lib/datetime";
 import { getMemberships } from "@/lib/auth";
 import { formatKES } from "@/lib/money";
+import { resultMessage } from "@/lib/mpesa/format";
 import { formatKenyanPhone, whatsappLink } from "@/lib/phone";
+import { mpesaEnabled } from "@/lib/server-env";
+import { MpesaRequestForm } from "../../mpesa-request-form";
 import { NotesForm, RescheduleForm, StatusForm } from "./booking-forms";
 import { createInvoiceFromBooking } from "../../invoices/actions";
 
@@ -21,7 +25,12 @@ export default async function BookingPage({ params }: PageProps<"/dashboard/book
 
   const membership = (await getMemberships()).find((m) => m.business.id === booking.business_id);
   const tz = membership?.business.timezone ?? "Africa/Nairobi";
-  const team = await getTeamAndServices(booking.business_id);
+  const [team, payments] = await Promise.all([
+    getTeamAndServices(booking.business_id),
+    getBookingPayments(booking.id),
+  ]);
+  const waitingMpesa = payments.some((p) => p.method === "mpesa" && p.status === "pending");
+  const depositPaid = payments.some((p) => p.status === "succeeded");
   const day = localDay(new Date(booking.starts_at), tz);
   const reference = booking.id.replace(/-/g, "").slice(0, 8).toUpperCase();
   const reminder = `Hi ${booking.customer_name}, a reminder of your ${booking.service_name} with ${membership?.business.name ?? "us"} on ${formatDateTimeLong(booking.starts_at, tz)}.`;
@@ -138,6 +147,63 @@ export default async function BookingPage({ params }: PageProps<"/dashboard/book
             </h2>
             <NotesForm bookingId={booking.id} notes={booking.notes} />
           </section>
+
+          {booking.deposit_cents > 0 && (
+            <section aria-labelledby="deposit-heading" className="card space-y-3">
+              <h2 id="deposit-heading" className="text-lg font-bold">
+                Deposit {formatKES(booking.deposit_cents)}
+              </h2>
+              {payments.length > 0 && (
+                <ul className="divide-y divide-line text-sm">
+                  {payments.map((p) => (
+                    <li key={p.id} className="flex justify-between gap-3 py-2">
+                      <span>
+                        {p.method === "mpesa" ? "M-Pesa" : p.method}
+                        {p.mpesa_receipt && (
+                          <span className="text-muted"> · {p.mpesa_receipt}</span>
+                        )}
+                        <span className="block text-xs text-muted">
+                          {formatDateTimeLong(p.paid_at ?? p.created_at, tz)} ·{" "}
+                          {resultMessage(p.status, p.result_desc)}
+                        </span>
+                      </span>
+                      <span
+                        data-status={p.status}
+                        className="font-semibold tabular-nums data-[status=succeeded]:text-mpesa data-[status=failed]:text-muted data-[status=failed]:line-through data-[status=cancelled]:text-muted data-[status=cancelled]:line-through"
+                      >
+                        {formatKES(p.amount_cents)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {depositPaid ? (
+                <p className="text-sm font-medium text-mpesa">Deposit paid.</p>
+              ) : booking.status !== "pending" ? (
+                <p className="text-sm text-muted">
+                  No deposit is waiting: the booking is {STATUS_LABEL[booking.status].toLowerCase()}
+                  .
+                </p>
+              ) : waitingMpesa ? (
+                <RefreshWhilePending label="Waiting for the customer to enter their M-Pesa PIN…" />
+              ) : mpesaEnabled() ? (
+                <>
+                  <p className="text-sm text-muted">
+                    The booking is held until the deposit is paid. Paying confirms it.
+                  </p>
+                  <MpesaRequestForm
+                    bookingId={booking.id}
+                    phone={formatKenyanPhone(booking.customer_phone)}
+                    depositLabel={formatKES(Math.floor(booking.deposit_cents / 100) * 100)}
+                  />
+                </>
+              ) : (
+                <p className="text-xs text-muted">
+                  M-Pesa isn&apos;t configured on this server (see docs/SETUP.md).
+                </p>
+              )}
+            </section>
+          )}
 
           {booking.status !== "cancelled" && (
             <section aria-labelledby="invoice-heading" className="card space-y-3">

@@ -36,6 +36,18 @@ export const getBooking = cache(async (id: string) => {
   return data ? bookingDetailSchema.parse(data) : null;
 });
 
+/** Payments taken against a booking directly (deposits), newest first. RLS applies. */
+export async function getBookingPayments(bookingId: string) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, method, status, amount_cents, mpesa_receipt, result_desc, paid_at, created_at")
+    .eq("booking_id", bookingId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  return data;
+}
 /** Active staff, active services, and who offers what. */
 export const getTeamAndServices = cache(async (businessId: string) => {
   const { supabase } = await requireUser();

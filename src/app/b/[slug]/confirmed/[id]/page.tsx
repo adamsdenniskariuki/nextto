@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Logo } from "@/components/logo";
+import { PayWithMpesaButton } from "@/components/pay-with-mpesa";
+import { RefreshWhilePending } from "@/components/refresh-while-pending";
 import { formatDateTimeLong, formatDuration, formatTime } from "@/lib/datetime";
 import { formatKES } from "@/lib/money";
 import { formatKenyanPhone, whatsappLink } from "@/lib/phone";
+import { latestMpesaAttempt } from "@/lib/mpesa/request";
 import { getPublicBooking } from "@/lib/public-booking";
+import { mpesaEnabled } from "@/lib/server-env";
+import { payDepositWithMpesa } from "./actions";
 
 // The status can change at any moment (deposit paid, cancelled), so always render fresh.
 export const dynamic = "force-dynamic";
@@ -33,6 +38,10 @@ export default async function ConfirmedPage({ params }: PageProps<"/b/[slug]/con
   const when = formatDateTimeLong(booking.starts_at, tz);
   const pending = booking.status === "pending";
   const cancelled = booking.status === "cancelled";
+  const canPay = booking.deposit_cents > 0 && mpesaEnabled();
+  const attempt = canPay ? await latestMpesaAttempt({ bookingId: booking.booking_id }) : null;
+  // Whole shillings: what M-Pesa will actually ask for (SQL drops the cents too).
+  const depositKes = formatKES(Math.floor(booking.deposit_cents / 100) * 100);
 
   return (
     <>
@@ -52,12 +61,52 @@ export default async function ConfirmedPage({ params }: PageProps<"/b/[slug]/con
             </h1>
             {pending && (
               <p className="mt-2 text-muted">
-                Your time is held. {business.name} will send an M-Pesa request for the{" "}
-                <strong className="text-ink">{formatKES(booking.deposit_cents)}</strong> deposit to
+                Your time is held. Pay the{" "}
+                <strong className="text-ink">{formatKES(booking.deposit_cents)}</strong> deposit
+                {canPay ? " with M-Pesa" : ` when ${business.name} sends an M-Pesa request`} to
                 confirm it.
               </p>
             )}
+            {!pending && attempt?.status === "succeeded" && (
+              <p className="mt-2 text-muted">
+                Deposit of {formatKES(attempt.amount_cents)} received. M-Pesa receipt{" "}
+                <strong className="text-ink" data-testid="mpesa-receipt">
+                  {attempt.receipt}
+                </strong>
+                .
+              </p>
+            )}
           </div>
+
+          {pending && canPay && (
+            <div className="rounded-2xl border border-line bg-surface-2 p-4">
+              {attempt?.status === "pending" ? (
+                <RefreshWhilePending
+                  label={`Check your phone${attempt.phone_last3 ? ` (ending ${attempt.phone_last3})` : ""} and enter your M-Pesa PIN…`}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {(attempt?.status === "cancelled" || attempt?.status === "failed") && (
+                    <p className="text-sm">
+                      {attempt.status === "cancelled"
+                        ? "The last M-Pesa prompt was cancelled."
+                        : `The last M-Pesa prompt didn't go through${attempt.result_desc ? `: ${attempt.result_desc}` : "."}`}{" "}
+                      You can try again.
+                    </p>
+                  )}
+                  <PayWithMpesaButton
+                    action={payDepositWithMpesa}
+                    fieldName="bookingId"
+                    fieldValue={booking.booking_id}
+                    label={`Pay ${depositKes} deposit with M-Pesa`}
+                  />
+                  <p className="text-xs text-muted">
+                    We&apos;ll send the prompt to the phone number you booked with.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
             <Item label="When" value={when} />

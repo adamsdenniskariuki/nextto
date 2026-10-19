@@ -112,6 +112,11 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
             echo "MAILPIT_URL=${MAILPIT_URL:-http://127.0.0.1:54324}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            # Mock M-Pesa: no Safaricom credentials in CI; the app calls its own
+            # callback route, so the whole callback path is still exercised.
+            echo "MPESA_ENV=mock"
+            echo "MPESA_CALLBACK_SECRET=ci-callback-secret"
           } >> "$GITHUB_ENV"
 
       - run: npm run build
