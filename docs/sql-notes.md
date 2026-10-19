@@ -10,7 +10,7 @@ docker exec -it supabase_db_nextto psql -U postgres
 ```
 
 > **Reading plans on tiny data.** With a few dozen rows a sequential scan is
-> genuinely cheapest, so the planner picks it. To see whether an index *can*
+> genuinely cheapest, so the planner picks it. To see whether an index _can_
 > be used, run `set enable_seqscan = off;` first (this session only). On
 > production-sized data, use `explain (analyze, buffers)` without that setting.
 
@@ -119,12 +119,12 @@ an index-only scan.
 
 ## 6. Other indexes worth knowing
 
-| Index | Kind | Why |
-| --- | --- | --- |
-| `invitations_open_email_idx` | partial **unique** | Only one *open* invitation per email per business; accepted ones don't count. |
-| `services_business_idx` | partial composite | Public booking page lists only active services, in order. |
-| `bookings_series_idx` | partial | Most bookings aren't recurring; the index skips the NULLs. |
-| `payments_business_paid_idx` | partial composite | Revenue reports read only succeeded payments by date. |
-| `mpesa_callbacks_unprocessed_idx` | partial | Finds callbacks that arrived before their payment row. |
-| `time_off_staff_during_idx` | GiST composite | Slot generation subtracts time off by staff and range. |
-| `business_daily_stats_pk` | unique on a matview | Required for `refresh materialized view concurrently`. |
+| Index                             | Kind                | Why                                                                           |
+| --------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
+| `invitations_open_email_idx`      | partial **unique**  | Only one _open_ invitation per email per business; accepted ones don't count. |
+| `services_business_idx`           | partial composite   | Public booking page lists only active services, in order.                     |
+| `bookings_series_idx`             | partial             | Most bookings aren't recurring; the index skips the NULLs.                    |
+| `payments_business_paid_idx`      | partial composite   | Revenue reports read only succeeded payments by date.                         |
+| `mpesa_callbacks_unprocessed_idx` | partial             | Finds callbacks that arrived before their payment row.                        |
+| `time_off_staff_during_idx`       | GiST composite      | Slot generation subtracts time off by staff and range.                        |
+| `business_daily_stats_pk`         | unique on a matview | Required for `refresh materialized view concurrently`.                        |

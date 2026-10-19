@@ -34,19 +34,30 @@ supabase test db                  # runs the pgTAP tests in supabase/tests
 `supabase status` prints the local API URL, the anon (publishable) key and the
 service-role key. Copy them into `.env.local`. Local URLs:
 
-| Service          | URL                                                       |
-| ---------------- | --------------------------------------------------------- |
-| API              | http://127.0.0.1:54321                                    |
-| Postgres         | postgresql://postgres:postgres@127.0.0.1:54322/postgres   |
-| Studio           | http://127.0.0.1:54323                                    |
-| Email testing    | http://127.0.0.1:54324 (magic-link emails land here)      |
+| Service       | URL                                                     |
+| ------------- | ------------------------------------------------------- |
+| API           | http://127.0.0.1:54321                                  |
+| Postgres      | postgresql://postgres:postgres@127.0.0.1:54322/postgres |
+| Studio        | http://127.0.0.1:54323                                  |
+| Email testing | http://127.0.0.1:54324 (magic-link emails land here)    |
 
 Seeded demo logins (local only): `owner+salon@nextto.test`,
 `owner+tutor@nextto.test`, and so on, one per business-type preset. Request a
 magic link and open it from the email testing UI.
 
-Once the Next.js app lands (increment 2) you will also run `npm install` and
-`npm run dev` (http://localhost:3000). For M-Pesa callbacks during local
+Then run the web app:
+
+```bash
+npm install
+npm run dev                       # http://localhost:3000
+```
+
+Sign in at http://localhost:3000/login. The magic-link email lands in Mailpit
+(http://127.0.0.1:54324); click the button there. A new account goes to
+`/onboarding`, where you pick a business-type preset. Staff invitations work the
+same way: the invitee's email also lands in Mailpit.
+
+For M-Pesa callbacks during local
 development, expose port 3000 with a tunnel (for example `cloudflared tunnel
 --url http://localhost:3000` or `ngrok http 3000`) and set `MPESA_CALLBACK_URL`
 to the tunnel URL. See [section 6](#6-m-pesa-daraja-sandbox).
@@ -54,12 +65,19 @@ to the tunnel URL. See [section 6](#6-m-pesa-daraja-sandbox).
 Useful commands:
 
 ```bash
+npm run typecheck                 # next typegen + tsc (strict)
+npm run lint                      # ESLint (next/core-web-vitals + typescript)
+npm test                          # Vitest unit tests (src/**/*.test.ts)
+npm run test:e2e                  # Playwright (needs `supabase start`; starts `npm run dev` itself)
+npm run db:types                  # regenerate src/lib/database.types.ts after a migration
 supabase migration new <name>     # new timestamped migration file
 supabase db lint                  # plpgsql_check over all functions
 supabase db diff                  # compare local DB with migrations
-supabase gen types typescript --local > src/lib/database.types.ts
 supabase stop                     # stop the containers
 ```
+
+First-time Playwright setup: `npx playwright install chromium`. The tests read
+emails from Mailpit; override its address with `MAILPIT_URL` if needed.
 
 ## 2. Supabase project
 
@@ -76,13 +94,23 @@ supabase stop                     # stop the containers
    - **Project ref** (the `xxxx` in `https://xxxx.supabase.co`) → `SUPABASE_PROJECT_REF`
 4. **Authentication → URL Configuration**:
    - Site URL: `https://nextto.app`
-   - Redirect URLs: `https://nextto.app/auth/callback`,
-     `https://*-adamsdenniskariuki.vercel.app/auth/callback` (preview
-     deployments) and `http://localhost:3000/auth/callback`.
+   - Redirect URLs: `https://nextto.app/**`,
+     `https://*-adamsdenniskariuki.vercel.app/**` (preview deployments) and
+     `http://localhost:3000/**`. Sign-in links redirect to `/dashboard` and
+     staff invitations to `/invite/<token>`, so allow whole paths.
 5. **Authentication → Providers → Email**: keep Email enabled (magic links).
    For production email volume configure custom SMTP under
    **Authentication → Emails → SMTP Settings**.
-6. **Database → Extensions**: nothing to click. The migrations enable
+6. **Authentication → Emails → Templates**: set **Magic Link** and
+   **Confirm signup** to the HTML in
+   [`supabase/templates/magic_link.html`](../supabase/templates/magic_link.html)
+   (subjects: "Your Nextto sign-in link" and "Welcome to Nextto: confirm your
+   email"). Their link points at `/auth/confirm?token_hash=…`, which works in
+   any browser. That matters for invitations, which the owner requests and the
+   invitee opens. The default templates use PKCE, which only works in the
+   requesting browser. `/auth/confirm` accepts both, so this step is needed for
+   invitations rather than for owner sign-in.
+7. **Database → Extensions**: nothing to click. The migrations enable
    `btree_gist` and `pg_cron` themselves.
 
 ## 3. Link the Supabase CLI and run migrations
@@ -120,22 +148,22 @@ supabase db push                                     # apply supabase/migrations
 "Public" variables (`NEXT_PUBLIC_*`) are compiled into the browser bundle.
 Everything else is a server-side secret. `.env.example` mirrors this table.
 
-| Name | Where to get it | Public / secret | Used by |
-| --- | --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | `https://nextto.app` in production, `http://localhost:3000` locally | Public | Absolute links (share links, auth redirects) |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API → Project URL (local: `supabase status`) | Public | Browser and server Supabase clients |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API Keys → anon / publishable key (local: `supabase status`) | Public | Browser and server Supabase clients (RLS applies) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API Keys → service_role / secret key (local: `supabase status`) | **Secret** | Server-only admin client (M-Pesa callback, invitations) |
-| `SUPABASE_PROJECT_REF` | The subdomain of your Supabase URL | Secret (CI only) | `supabase link` in GitHub Actions |
-| `SUPABASE_ACCESS_TOKEN` | Supabase → Account → Access Tokens | **Secret** (CI only) | `supabase link` / `db push` in GitHub Actions |
-| `SUPABASE_DB_PASSWORD` | Chosen when creating the project | **Secret** (CI only) | `supabase db push` in GitHub Actions |
-| `MPESA_ENV` | `sandbox` (switch to `production` at go-live) | Secret | Chooses the Daraja base URL |
-| `MPESA_CONSUMER_KEY` | Daraja portal → My Apps → your app | **Secret** | OAuth token for Daraja |
-| `MPESA_CONSUMER_SECRET` | Daraja portal → My Apps → your app | **Secret** | OAuth token for Daraja |
-| `MPESA_SHORTCODE` | Sandbox: `174379` (Daraja test credentials) | Secret | STK push `BusinessShortCode` |
-| `MPESA_PASSKEY` | Daraja → APIs → M-Pesa Express → Simulate (test credentials) | **Secret** | STK password = base64(shortcode + passkey + timestamp) |
-| `MPESA_CALLBACK_SECRET` | Generate: `openssl rand -hex 32` | **Secret** | Unguessable path segment that authenticates callbacks |
-| `MPESA_CALLBACK_URL` | `${NEXT_PUBLIC_SITE_URL}/api/mpesa/callback/${MPESA_CALLBACK_SECRET}` | **Secret** (contains the secret) | Sent to Daraja as `CallBackURL` |
+| Name                            | Where to get it                                                            | Public / secret                  | Used by                                                 |
+| ------------------------------- | -------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`          | `https://nextto.app` in production, `http://localhost:3000` locally        | Public                           | Absolute links (share links, auth redirects)            |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Project Settings → API → Project URL (local: `supabase status`) | Public                           | Browser and server Supabase clients                     |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API Keys → anon / publishable key (local: `supabase status`)    | Public                           | Browser and server Supabase clients (RLS applies)       |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase → API Keys → service_role / secret key (local: `supabase status`) | **Secret**                       | Server-only admin client (M-Pesa callback, invitations) |
+| `SUPABASE_PROJECT_REF`          | The subdomain of your Supabase URL                                         | Secret (CI only)                 | `supabase link` in GitHub Actions                       |
+| `SUPABASE_ACCESS_TOKEN`         | Supabase → Account → Access Tokens                                         | **Secret** (CI only)             | `supabase link` / `db push` in GitHub Actions           |
+| `SUPABASE_DB_PASSWORD`          | Chosen when creating the project                                           | **Secret** (CI only)             | `supabase db push` in GitHub Actions                    |
+| `MPESA_ENV`                     | `sandbox` (switch to `production` at go-live)                              | Secret                           | Chooses the Daraja base URL                             |
+| `MPESA_CONSUMER_KEY`            | Daraja portal → My Apps → your app                                         | **Secret**                       | OAuth token for Daraja                                  |
+| `MPESA_CONSUMER_SECRET`         | Daraja portal → My Apps → your app                                         | **Secret**                       | OAuth token for Daraja                                  |
+| `MPESA_SHORTCODE`               | Sandbox: `174379` (Daraja test credentials)                                | Secret                           | STK push `BusinessShortCode`                            |
+| `MPESA_PASSKEY`                 | Daraja → APIs → M-Pesa Express → Simulate (test credentials)               | **Secret**                       | STK password = base64(shortcode + passkey + timestamp)  |
+| `MPESA_CALLBACK_SECRET`         | Generate: `openssl rand -hex 32`                                           | **Secret**                       | Unguessable path segment that authenticates callbacks   |
+| `MPESA_CALLBACK_URL`            | `${NEXT_PUBLIC_SITE_URL}/api/mpesa/callback/${MPESA_CALLBACK_SECRET}`      | **Secret** (contains the secret) | Sent to Daraja as `CallBackURL`                         |
 
 ## 6. M-Pesa Daraja sandbox
 
@@ -177,18 +205,19 @@ redirects to the primary.
 2. At the nextto.app DNS provider, create the records Vercel shows. Typical
    values are below; always copy the exact ones from the Vercel UI:
 
-   | Type | Name | Value |
-   | --- | --- | --- |
-   | A | `@` | `76.76.21.21` |
+   | Type  | Name  | Value                  |
+   | ----- | ----- | ---------------------- |
+   | A     | `@`   | `76.76.21.21`          |
    | CNAME | `www` | `cname.vercel-dns.com` |
 
    Alternatively, point the domain's nameservers to Vercel
    (`ns1.vercel-dns.com`, `ns2.vercel-dns.com`).
+
 3. Add `nextto.madebyfavor.com` in Vercel → Domains and choose **Redirect to
    nextto.app** (308, permanent). In the madebyfavor.com DNS add:
 
-   | Type | Name | Value |
-   | --- | --- | --- |
+   | Type  | Name     | Value                  |
+   | ----- | -------- | ---------------------- |
    | CNAME | `nextto` | `cname.vercel-dns.com` |
 
 4. Vercel issues TLS certificates automatically once DNS resolves.
